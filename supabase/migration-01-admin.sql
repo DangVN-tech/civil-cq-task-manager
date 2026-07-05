@@ -14,13 +14,23 @@ update users set is_admin = true where login_id = 'admin';
 -- 3. Cho phép client đọc cột mới (bảng users đang dùng grant theo từng cột)
 grant select (is_admin) on users to anon;
 
--- 4. Cơ chế chéo: Trưởng phòng đặt / đổi PIN cho Admin.
---    Admin không tự đổi được PIN của mình — phải xin Trưởng phòng.
-create or replace function fn_set_admin_pin(p_new_hash text)
+-- 4. PIN DÙNG CHUNG (cơ chế chéo):
+--    Admin KHÔNG có PIN riêng - đăng nhập bằng chính PIN của Trưởng phòng thật.
+--    Chỉ Trưởng phòng đổi được PIN; Trưởng phòng chia sẻ PIN = cho phép Admin vào.
+create or replace function fn_verify_pin(p_login_id text, p_pin_hash text)
 returns boolean language plpgsql security definer as $$
-declare v_count int;
+declare v_ok boolean;
 begin
-  update users set pin_hash = p_new_hash, pin_changed = true where is_admin = true;
-  get diagnostics v_count = row_count;
-  return v_count > 0;
+  select case
+    when u.is_admin then exists (
+      select 1 from users tp
+      where tp.role = 'truong_phong' and tp.is_admin = false
+        and tp.pin_hash = p_pin_hash
+    )
+    else u.pin_hash = p_pin_hash
+  end
+  into v_ok
+  from users u
+  where u.login_id = p_login_id and u.role = 'truong_phong';
+  return coalesce(v_ok, false);
 end $$;

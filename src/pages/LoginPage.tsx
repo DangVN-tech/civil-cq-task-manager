@@ -136,7 +136,7 @@ export default function LoginPage() {
               Xin chào <b>{pending.full_name}</b> ({pending.is_admin ? 'Admin' : 'Trưởng phòng'}).
               Nhập PIN để tiếp tục:
             </p>
-            <Field label="PIN (4 số)" required>
+            <Field label={pending.is_admin ? 'PIN (dùng chung với Trưởng phòng)' : 'PIN (4 số)'} required>
               <Input
                 autoFocus
                 type="password"

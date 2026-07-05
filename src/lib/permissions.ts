@@ -17,9 +17,9 @@ export const canReturnTask = isTruongPhong      // trả task về làm lại
 export const canManageStaff = (u: User) => isTruongPhong(u) || isAdmin(u)
 export const canManageStorage = (u: User) => isTruongPhong(u) || isAdmin(u)
 
-/** Chỉ Trưởng phòng thật tự đổi PIN; PIN của Admin do Trưởng phòng cấp (cơ chế chéo) */
+/** Chỉ Trưởng phòng thật đổi được PIN.
+ *  Admin dùng chung PIN với Trưởng phòng (cơ chế chéo): Trưởng phòng chia sẻ PIN = cho phép vào. */
 export const canChangeOwnPin = isTruongPhong
-export const canSetAdminPin = isTruongPhong
 
 export const canViewDashboard = (u: User) =>
   isTruongPhong(u) || u.role === 'pho_phong' || isAdmin(u)
