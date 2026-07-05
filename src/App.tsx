@@ -1,7 +1,8 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AppShell from './components/layout/AppShell'
 import { useAuth } from './context/AuthContext'
-import { canManageStaff, canManageStorage, canViewDashboard } from './lib/permissions'
+import { canManageProjects, canManageStaff, canManageStorage, canViewDashboard } from './lib/permissions'
+import ProjectsPage from './pages/ProjectsPage'
 import CompletedPage from './pages/CompletedPage'
 import DashboardPage from './pages/DashboardPage'
 import InProgressPage from './pages/InProgressPage'
@@ -27,6 +28,10 @@ export default function App() {
         <Route
           path="/dashboard"
           element={canViewDashboard(user) ? <DashboardPage /> : <Navigate to="/dang-thuc-hien" replace />}
+        />
+        <Route
+          path="/du-an"
+          element={canManageProjects(user) ? <ProjectsPage /> : <Navigate to="/dang-thuc-hien" replace />}
         />
         <Route
           path="/nhan-su"

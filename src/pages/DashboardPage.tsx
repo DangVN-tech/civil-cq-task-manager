@@ -1,18 +1,22 @@
 import { useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { cardCls, Loading } from '../components/ui'
 import { useAllTasks } from '../hooks/useTasks'
+import { useProjects } from '../hooks/useProjects'
 import { useUsers } from '../hooks/useUsers'
 import { useStorageUsage } from '../hooks/useStorage'
 import { useCurrentUser } from '../context/AuthContext'
 import { canManageStorage } from '../lib/permissions'
 import { cn, fmtBytes, isOverdue } from '../lib/utils'
-import { displayRole, STORAGE_QUOTA } from '../types'
+import { displayRole, PROJECT_STATUS_LABEL, STORAGE_QUOTA } from '../types'
 
 /** Dashboard toàn phòng — Trưởng phòng, Phó phòng & Admin. */
 export default function DashboardPage() {
   const user = useCurrentUser()
+  const navigate = useNavigate()
   const { data: tasks, isLoading } = useAllTasks()
   const { data: users } = useUsers()
+  const { data: projects } = useProjects()
   const { data: usage } = useStorageUsage()
 
   const stats = useMemo(() => {
@@ -36,6 +40,20 @@ export default function DashboardPage() {
       }
     })
   }, [users, tasks])
+
+  // Thống kê theo Dự án / Gói thầu (WBS)
+  const perProject = useMemo(() => {
+    return (projects ?? []).map((p) => {
+      const mine = (tasks ?? []).filter((t) => t.group?.project?.id === p.id)
+      return {
+        project: p,
+        total: mine.length,
+        inProgress: mine.filter((t) => t.status === 'dang_thuc_hien').length,
+        completed: mine.filter((t) => t.status === 'hoan_thanh').length,
+        overdue: mine.filter(isOverdue).length,
+      }
+    })
+  }, [projects, tasks])
 
   const usagePct = usage != null ? Math.round((usage / STORAGE_QUOTA) * 100) : 0
 
@@ -75,6 +93,42 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+
+      {/* Theo dự án / gói thầu (WBS) — click để xem chi tiết */}
+      <div className={`${cardCls} overflow-hidden`}>
+        <div className="border-b border-slate-100 bg-slate-50/50 p-4 text-xs font-bold uppercase tracking-wider text-slate-500">
+          Theo dự án / gói thầu — bấm vào dòng để xem task
+        </div>
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 text-xs font-bold text-slate-400">
+              <th className="p-4 font-bold">Dự án</th>
+              <th className="p-4 font-bold">Trạng thái</th>
+              <th className="p-4 text-center font-bold">Tổng task</th>
+              <th className="p-4 text-center font-bold">Đang thực hiện</th>
+              <th className="p-4 text-center font-bold">Hoàn thành</th>
+              <th className="p-4 text-center font-bold">Quá hạn</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {perProject.map((r) => (
+              <tr
+                key={r.project.id}
+                onClick={() => navigate(`/dang-thuc-hien?project=${r.project.id}`)}
+                className="cursor-pointer transition-colors hover:bg-brand-50/50"
+                title="Xem task của dự án này"
+              >
+                <td className="p-4 font-bold text-slate-900">{r.project.name}</td>
+                <td className="p-4 text-xs text-slate-500">{PROJECT_STATUS_LABEL[r.project.status]}</td>
+                <td className="p-4 text-center font-semibold">{r.total}</td>
+                <td className="p-4 text-center"><CountPill value={r.inProgress} cls="bg-blue-50 text-blue-700" /></td>
+                <td className="p-4 text-center"><CountPill value={r.completed} cls="bg-emerald-50 text-emerald-700" /></td>
+                <td className="p-4 text-center"><CountPill value={r.overdue} cls="bg-rose-50 text-rose-700" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       {/* Theo từng nhân sự */}
       <div className={`${cardCls} overflow-hidden`}>

@@ -7,6 +7,7 @@ export type NotifType =
   | 'assigned' | 'deadline_24h' | 'deadline_8h' | 'deadline_2h'
   | 'deadline_changed' | 'returned'
 export type ActivityType = 'created' | 'progress' | 'completed'
+export type ProjectStatus = 'dang_thuc_hien' | 'hoan_thanh' | 'luu_tru'
 
 export interface User {
   id: string
@@ -20,6 +21,31 @@ export interface User {
 
 /* Cột được phép SELECT trên bảng users (pin_hash bị chặn ở tầng DB) */
 export const USER_COLS = 'id,login_id,full_name,role,is_admin,pin_changed,created_at'
+
+/** Dự án / Gói thầu (WBS cấp 1) */
+export interface Project {
+  id: string
+  name: string
+  description: string
+  status: ProjectStatus
+  created_at: string
+  groups?: TaskGroup[]
+}
+
+/** Nhóm công việc (WBS cấp 2, thuộc 1 dự án) */
+export interface TaskGroup {
+  id: string
+  project_id: string
+  name: string
+  created_at: string
+  project?: Project
+}
+
+export const PROJECT_STATUS_LABEL: Record<ProjectStatus, string> = {
+  dang_thuc_hien: 'Đang thực hiện',
+  hoan_thanh: 'Hoàn thành',
+  luu_tru: 'Lưu trữ',
+}
 
 export interface TaskAssignee {
   task_id: string
@@ -92,6 +118,9 @@ export interface Task {
   last_return_reason: string | null
   /** Phối hợp ngoài phòng (tên tự do, không cần tài khoản) */
   external_collabs: string[]
+  /** Nhóm công việc chứa task (WBS); undefined khi DB chưa migration */
+  group_id?: string
+  group?: TaskGroup
   created_at: string
   updated_at: string
   assignees: TaskAssignee[]

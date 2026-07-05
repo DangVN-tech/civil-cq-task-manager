@@ -20,6 +20,7 @@ create type notif_type as enum (
   'deadline_changed', 'returned'
 );
 create type activity_type as enum ('created', 'progress', 'completed');
+create type project_status as enum ('dang_thuc_hien', 'hoan_thanh', 'luu_tru');
 
 -- ============================================================
 -- 2. TABLES
@@ -37,7 +38,25 @@ create table users (
   created_at  timestamptz not null default now()
 );
 
--- Task
+-- Dự án / Gói thầu (WBS cấp 1)
+create table projects (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  description text not null default '',
+  status      project_status not null default 'dang_thuc_hien',
+  created_at  timestamptz not null default now()
+);
+
+-- Nhóm công việc (WBS cấp 2, thuộc 1 dự án)
+create table task_groups (
+  id         uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  name       text not null,
+  created_at timestamptz not null default now()
+);
+create index idx_groups_project on task_groups(project_id);
+
+-- Task (WBS cấp 3)
 create table tasks (
   id                 uuid primary key default gen_random_uuid(),
   title              text not null,
@@ -52,9 +71,12 @@ create table tasks (
   completed_by       uuid references users(id) on delete set null,
   last_return_reason text,
   external_collabs   text[] not null default '{}',  -- phối hợp ngoài phòng (nhập tự do)
+  -- RESTRICT: nhóm/dự án còn task thì không thể xóa (chống mất dữ liệu)
+  group_id           uuid not null references task_groups(id) on delete restrict,
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
+create index idx_tasks_group on tasks(group_id);
 
 -- Người tham gia task (chủ trì / phối hợp)
 create table task_assignees (
@@ -320,6 +342,8 @@ select cron.schedule('deadline-notifications', '*/15 * * * *',
 -- ============================================================
 -- 5. RLS (mô hình nội bộ: mở cho anon, đã chốt với người dùng)
 -- ============================================================
+alter table projects       enable row level security;
+alter table task_groups    enable row level security;
 alter table users          enable row level security;
 alter table tasks          enable row level security;
 alter table task_assignees enable row level security;
@@ -329,6 +353,8 @@ alter table comments       enable row level security;
 alter table activity_log   enable row level security;
 alter table notifications  enable row level security;
 
+create policy anon_all on projects       for all to anon using (true) with check (true);
+create policy anon_all on task_groups    for all to anon using (true) with check (true);
 create policy anon_all on users          for all to anon using (true) with check (true);
 create policy anon_all on tasks          for all to anon using (true) with check (true);
 create policy anon_all on task_assignees for all to anon using (true) with check (true);
@@ -348,6 +374,8 @@ grant delete on users to anon;
 -- ============================================================
 -- 6. REALTIME
 -- ============================================================
+alter publication supabase_realtime add table projects;
+alter publication supabase_realtime add table task_groups;
 alter publication supabase_realtime add table tasks;
 alter publication supabase_realtime add table task_assignees;
 alter publication supabase_realtime add table files;
@@ -378,3 +406,9 @@ create policy anon_storage_delete on storage.objects
 insert into users (login_id, full_name, role)
 values ('admin', 'Quản trị viên', 'truong_phong');
 update users set is_admin = true where login_id = 'admin';
+
+-- Dự án + Nhóm mặc định (task chưa phân loại sẽ nằm ở đây)
+insert into projects (name, description)
+values ('General', 'Dự án mặc định cho các task chưa phân loại');
+insert into task_groups (project_id, name)
+select id, 'General' from projects where name = 'General';

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { useCurrentUser } from '../../context/AuthContext'
+import { useProjects } from '../../hooks/useProjects'
 import { useUsers } from '../../hooks/useUsers'
 import { useTaskMutations, type TaskInput } from '../../hooks/useTasks'
 import { uploadTaskFiles, validateFiles } from '../../lib/files'
@@ -20,6 +21,7 @@ export default function TaskForm({
 }) {
   const user = useCurrentUser()
   const { data: users } = useUsers()
+  const { data: projects } = useProjects()
   const { createTask, updateTask } = useTaskMutations()
 
   const [title, setTitle] = useState('')
@@ -27,6 +29,8 @@ export default function TaskForm({
   const [assignedDate, setAssignedDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [deadline, setDeadline] = useState('')
   const [priority, setPriority] = useState<Priority>('thuong')
+  const [projectId, setProjectId] = useState('')
+  const [groupId, setGroupId] = useState('')
   const [participantIds, setParticipantIds] = useState<string[]>([])
   const [externals, setExternals] = useState<string[]>([])
   const [externalInput, setExternalInput] = useState('')
@@ -46,12 +50,16 @@ export default function TaskForm({
       const phoiHop = editing.assignees.filter((a) => a.assign_role === 'phoi_hop').map((a) => a.user_id)
       setParticipantIds([...chuTri, ...phoiHop])
       setExternals(editing.external_collabs ?? [])
+      setProjectId(editing.group?.project_id ?? editing.group?.project?.id ?? '')
+      setGroupId(editing.group_id ?? '')
     } else {
       setTitle(''); setDescription(''); setPriority('thuong')
       setAssignedDate(format(new Date(), 'yyyy-MM-dd'))
       setDeadline('')
       setParticipantIds([])
       setExternals([])
+      setProjectId('')
+      setGroupId('')
     }
     setExternalInput('')
     setRefFiles([])
@@ -59,6 +67,28 @@ export default function TaskForm({
   }, [open, editing])
 
   // Admin hệ thống không tham gia thực hiện task
+  // Dự án chọn được: bỏ dự án Lưu trữ (trừ khi task đang sửa nằm trong đó).
+  // Mặc định: General (hoặc dự án đầu tiên) để tạo task nhanh không thêm bước.
+  const selectableProjects = useMemo(
+    () => (projects ?? []).filter((p) => p.status !== 'luu_tru' || p.id === projectId),
+    [projects, projectId],
+  )
+  const currentProject = (projects ?? []).find((p) => p.id === projectId)
+  const groups = currentProject?.groups ?? []
+
+  useEffect(() => {
+    if (!open || projectId || !projects || projects.length === 0) return
+    const general = projects.find((p) => p.name === 'General') ?? projects[0]
+    setProjectId(general.id)
+    setGroupId(general.groups?.[0]?.id ?? '')
+  }, [open, projectId, projects])
+
+  const pickProject = (id: string) => {
+    setProjectId(id)
+    const p = (projects ?? []).find((x) => x.id === id)
+    setGroupId(p?.groups?.[0]?.id ?? '')
+  }
+
   const available = useMemo(
     () => (users ?? []).filter((u) => !u.is_admin && !participantIds.includes(u.id)),
     [users, participantIds],
@@ -81,6 +111,7 @@ export default function TaskForm({
   const submit = async () => {
     setError('')
     if (!title.trim()) return setError('Chưa nhập đầu mục công việc.')
+    if (!groupId) return setError('Chưa chọn Nhóm công việc (tạo nhóm trong "Quản lý dự án" nếu dự án chưa có nhóm).')
     if (participantIds.length === 0) return setError('Bắt buộc chọn Chủ trì (người được chọn đầu tiên).')
     if (refFiles.length > 0) {
       const err = validateFiles(refFiles)
@@ -95,6 +126,7 @@ export default function TaskForm({
       priority,
       participantIds,
       externalCollabs: externals,
+      groupId,
     }
     setBusy(true)
     try {
@@ -125,6 +157,26 @@ export default function TaskForm({
             placeholder={'1. Làm báo cáo\n2. Làm báo giá\n3. Phạm vi công việc'}
           />
         </Field>
+
+        {/* WBS: Dự án -> Nhóm công việc */}
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Dự án / Gói thầu" required>
+            <Select value={projectId} onChange={(e) => pickProject(e.target.value)}>
+              {selectableProjects.length === 0 && <option value="">(Chưa có dự án)</option>}
+              {selectableProjects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Nhóm công việc" required>
+            <Select value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+              {groups.length === 0 && <option value="">(Dự án chưa có nhóm)</option>}
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </Select>
+          </Field>
+        </div>
 
         <div className="grid grid-cols-3 gap-3">
           <Field label="Ngày giao việc" required>

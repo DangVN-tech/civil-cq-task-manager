@@ -77,6 +77,8 @@ export default function TaskDetail({ task }: { task: Task }) {
 
         {/* Thông tin chung */}
         <div className={`${cardCls} grid grid-cols-2 gap-x-6 gap-y-2 p-4 text-xs`}>
+          <Info label="Dự án / Gói thầu" value={task.group?.project?.name ?? '—'} />
+          <Info label="Nhóm công việc" value={task.group?.name ?? '—'} />
           <Info label="Ngày giao việc" value={fmtDate(task.assigned_date)} />
           <Info label="Deadline"
             value={task.deadline

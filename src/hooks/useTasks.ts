@@ -3,38 +3,52 @@ import { supabase } from '../lib/supabase'
 import { USER_COLS, type MarkColor, type Priority, type Status, type Task } from '../types'
 
 /* pin_hash bị chặn ở DB nên mọi embed users phải liệt kê cột tường minh */
-const TASK_SELECT = `*,
+const BASE_SELECT = `*,
   assignees:task_assignees(task_id,user_id,assign_role,user:users(${USER_COLS})),
   marks:task_marks(user_id,task_id,color),
   files(id,task_id,uploader_id,file_name,ext,size_bytes,storage_path,is_reference,uploaded_at,uploader:users(${USER_COLS})),
   completer:users!tasks_completed_by_fkey(${USER_COLS})`
 
+const TASK_SELECT = `${BASE_SELECT},
+  group:task_groups(id,project_id,name,project:projects(id,name,status))`
+
+/** Truy vấn task kèm WBS; nếu DB chưa chạy migration-03 (chưa có bảng task_groups)
+ *  thì tự lùi về truy vấn cũ để app không bao giờ chết. */
+async function fetchTasks(build: (select: string) => ReturnType<typeof buildQuery>): Promise<Task[]> {
+  const { data, error } = await build(TASK_SELECT)
+  if (!error) return (data ?? []) as unknown as Task[]
+  const missingWbs = error.code === 'PGRST200' || /task_groups|projects/.test(error.message ?? '')
+  if (!missingWbs) throw error
+  const { data: d2, error: e2 } = await build(BASE_SELECT)
+  if (e2) throw e2
+  return (d2 ?? []) as unknown as Task[]
+}
+
+function buildQuery(select: string) {
+  return supabase.from('tasks').select(select)
+}
+
 export function useTasks(status: Status) {
   return useQuery({
     queryKey: ['tasks', status],
-    queryFn: async (): Promise<Task[]> => {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select(TASK_SELECT)
-        .eq('status', status)
-        .order(status === 'hoan_thanh' ? 'completed_at' : 'deadline', {
-          ascending: status !== 'hoan_thanh',
-          nullsFirst: false, // task không deadline xếp cuối
-        })
-      if (error) throw error
-      return (data ?? []) as unknown as Task[]
-    },
+    queryFn: () =>
+      fetchTasks((select) =>
+        supabase
+          .from('tasks')
+          .select(select)
+          .eq('status', status)
+          .order(status === 'hoan_thanh' ? 'completed_at' : 'deadline', {
+            ascending: status !== 'hoan_thanh',
+            nullsFirst: false, // task không deadline xếp cuối
+          }),
+      ),
   })
 }
 
 export function useAllTasks() {
   return useQuery({
     queryKey: ['tasks', 'all'],
-    queryFn: async (): Promise<Task[]> => {
-      const { data, error } = await supabase.from('tasks').select(TASK_SELECT)
-      if (error) throw error
-      return (data ?? []) as unknown as Task[]
-    },
+    queryFn: () => fetchTasks((select) => supabase.from('tasks').select(select)),
   })
 }
 
@@ -49,6 +63,8 @@ export interface TaskInput {
   participantIds: string[]
   /** Phối hợp ngoài phòng (tên tự do) */
   externalCollabs: string[]
+  /** Nhóm công việc (WBS) chứa task */
+  groupId: string
 }
 
 export function useTaskMutations() {
@@ -66,6 +82,7 @@ export function useTaskMutations() {
           deadline: input.deadline,
           priority: input.priority,
           external_collabs: input.externalCollabs,
+          group_id: input.groupId,
           created_by: createdBy,
         })
         .select('id')
@@ -95,6 +112,7 @@ export function useTaskMutations() {
           deadline: input.deadline,
           priority: input.priority,
           external_collabs: input.externalCollabs,
+          group_id: input.groupId,
         })
         .eq('id', taskId)
       if (error) throw error

@@ -4,7 +4,7 @@ import { useAuth, useCurrentUser } from '../../context/AuthContext'
 import { ResizeHandle, useColumnResize } from '../../hooks/useColumnResize'
 import { useRealtime } from '../../hooks/useRealtime'
 import { useTasks } from '../../hooks/useTasks'
-import { canChangeOwnPin, canManageStaff, canManageStorage, canViewDashboard, isParticipant } from '../../lib/permissions'
+import { canChangeOwnPin, canManageProjects, canManageStaff, canManageStorage, canViewDashboard, isParticipant } from '../../lib/permissions'
 import { cn } from '../../lib/utils'
 import { displayRole } from '../../types'
 import { Button, Input } from '../ui'
@@ -85,6 +85,7 @@ export default function AppShell() {
           <NavLink to="/dang-thuc-hien" className={navItem}>Đang thực hiện</NavLink>
           <NavLink to="/hoan-thanh" className={navItem}>Hoàn thành</NavLink>
           {canViewDashboard(user) && <NavLink to="/dashboard" className={navItem}>Dashboard</NavLink>}
+          {canManageProjects(user) && <NavLink to="/du-an" className={navItem}>Quản lý dự án</NavLink>}
           {canManageStaff(user) && <NavLink to="/nhan-su" className={navItem}>Quản lý nhân sự</NavLink>}
           {canManageStorage(user) && <NavLink to="/dung-luong" className={navItem}>Quản lý dung lượng</NavLink>}
         </nav>

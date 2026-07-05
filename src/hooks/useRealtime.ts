@@ -18,6 +18,14 @@ export function useRealtime(userId: string) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'task_assignees' }, () => {
         qc.invalidateQueries({ queryKey: ['tasks'] })
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
+        qc.invalidateQueries({ queryKey: ['projects'] })
+        qc.invalidateQueries({ queryKey: ['tasks'] })
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'task_groups' }, () => {
+        qc.invalidateQueries({ queryKey: ['projects'] })
+        qc.invalidateQueries({ queryKey: ['tasks'] })
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'files' }, () => {
         qc.invalidateQueries({ queryKey: ['tasks'] })
         qc.invalidateQueries({ queryKey: ['storage-usage'] })

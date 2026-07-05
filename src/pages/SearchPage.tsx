@@ -19,6 +19,8 @@ function matches(task: Task, q: string): boolean {
   if (task.assignees.some((a) => a.user && normalize(a.user.full_name).includes(q))) return true
   if (task.assignees.some((a) => a.user && normalize(a.user.login_id).includes(q))) return true
   if ((task.external_collabs ?? []).some((n) => normalize(n).includes(q))) return true
+  if (task.group && normalize(task.group.name).includes(q)) return true
+  if (task.group?.project && normalize(task.group.project.name).includes(q)) return true
   return false
 }
 
