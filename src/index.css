@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
+  /* Bảng màu kiểu Outlook: xanh dương chủ đạo, nền xám nhạt */
+  --color-brand-50: #eff6fc;
+  --color-brand-100: #deecf9;
+  --color-brand-500: #0078d4;
+  --color-brand-600: #106ebe;
+  --color-brand-700: #005a9e;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-gray-100 text-gray-900 antialiased;
+  font-size: 14px;
+}
+
+/* Thanh cuộn mảnh kiểu Outlook */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: #c8c6c4; border-radius: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
