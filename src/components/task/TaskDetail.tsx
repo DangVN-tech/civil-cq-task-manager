@@ -159,7 +159,7 @@ export default function TaskDetail({ task }: { task: Task }) {
           <Button
             variant="danger" disabled={!returnReason.trim()}
             onClick={() => {
-              returnTask.mutate({ taskId: task.id, reason: returnReason.trim() })
+              returnTask.mutate({ taskId: task.id, reason: returnReason.trim(), userId: user.id })
               setReturnOpen(false)
             }}
           >

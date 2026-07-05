@@ -1,5 +1,5 @@
 import { differenceInMinutes, format, isToday, isYesterday } from 'date-fns'
-import type { Priority, Task } from '../types'
+import type { Priority, Task, User } from '../types'
 
 export function cn(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ')
@@ -55,6 +55,15 @@ export function completedGroupLabel(completedAt: string): string {
 }
 
 export const PRIORITY_ORDER: Record<Priority, number> = { khan: 0, gap: 1, thuong: 2 }
+
+/** Thứ tự danh sách nhân sự: Trưởng phòng -> Admin -> Phó phòng -> Nhân viên */
+export function sortUsers(users: User[]): User[] {
+  const rank = (u: User) =>
+    u.is_admin ? 1 : u.role === 'truong_phong' ? 0 : u.role === 'pho_phong' ? 2 : 3
+  return [...users].sort(
+    (a, b) => rank(a) - rank(b) || a.full_name.localeCompare(b.full_name, 'vi'),
+  )
+}
 
 /** Chuẩn hóa tên file khi lưu Storage (bỏ dấu, ký tự lạ) */
 export function slugFileName(name: string): string {

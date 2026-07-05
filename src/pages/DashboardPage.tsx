@@ -6,7 +6,7 @@ import { useStorageUsage } from '../hooks/useStorage'
 import { useCurrentUser } from '../context/AuthContext'
 import { canManageStorage } from '../lib/permissions'
 import { cn, fmtBytes, isOverdue } from '../lib/utils'
-import { ROLE_LABEL, STORAGE_QUOTA } from '../types'
+import { displayRole, STORAGE_QUOTA } from '../types'
 
 /** Dashboard toàn phòng — Trưởng phòng & Phó phòng. */
 export default function DashboardPage() {
@@ -95,7 +95,7 @@ export default function DashboardPage() {
             {perUser.map((r) => (
               <tr key={r.user.id} className="border-b border-gray-100 hover:bg-gray-50">
                 <td className="px-3 py-2 font-medium">{r.user.full_name}</td>
-                <td className="px-3 py-2 text-xs text-gray-500">{ROLE_LABEL[r.user.role]}</td>
+                <td className="px-3 py-2 text-xs text-gray-500">{displayRole(r.user)}</td>
                 <td className="px-3 py-2 text-center">{r.inProgress}</td>
                 <td className="px-3 py-2 text-center text-green-700">{r.completed}</td>
                 <td className={cn('px-3 py-2 text-center', r.overdue > 0 && 'font-bold text-red-600')}>

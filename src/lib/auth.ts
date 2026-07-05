@@ -45,6 +45,14 @@ export async function changePin(loginId: string, oldPin: string, newPin: string)
   return data === true
 }
 
+/** Trưởng phòng đặt / đổi PIN cho tài khoản Admin (cơ chế chéo). */
+export async function setAdminPin(newPin: string): Promise<boolean> {
+  const newHash = await sha256Hex(newPin)
+  const { data, error } = await supabase.rpc('fn_set_admin_pin', { p_new_hash: newHash })
+  if (error) throw error
+  return data === true
+}
+
 export function saveSession(userId: string) {
   localStorage.setItem(SESSION_KEY, userId)
 }

@@ -3,7 +3,7 @@ import { useCurrentUser } from '../../context/AuthContext'
 import { useAddComment, useComments } from '../../hooks/useTaskDetail'
 import { canComment } from '../../lib/permissions'
 import { fmtDateTime } from '../../lib/utils'
-import type { Task } from '../../types'
+import { displayRole, type Task } from '../../types'
 import { Button, Input } from '../ui'
 
 /** Comment: chỉ tồn tại khi task Đang thực hiện. */
@@ -32,7 +32,9 @@ export default function CommentSection({ task }: { task: Task }) {
         {(comments ?? []).map((c) => (
           <div key={c.id} className="text-xs">
             <span className="font-semibold">{c.user?.full_name ?? '—'}</span>
-            {c.user?.role === 'truong_phong' && <span className="ml-1 text-brand-600">(Trưởng phòng)</span>}
+            {c.user && (c.user.role !== 'nhan_vien' || c.user.is_admin) && (
+              <span className="ml-1 text-brand-600">({displayRole(c.user)})</span>
+            )}
             <span className="ml-2 text-gray-400">{fmtDateTime(c.created_at)}</span>
             <p className="mt-0.5 whitespace-pre-wrap text-gray-800">{c.content}</p>
           </div>

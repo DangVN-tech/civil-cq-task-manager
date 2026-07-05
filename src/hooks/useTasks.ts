@@ -138,16 +138,24 @@ export function useTaskMutations() {
     onSuccess: invalidate,
   })
 
-  /** Trưởng phòng trả task về làm lại (bắt buộc lý do) */
+  /** Trưởng phòng trả task về làm lại (bắt buộc lý do).
+   *  Lý do được tự động lưu thành comment để giữ lại lịch sử trao đổi. */
   const returnTask = useMutation({
-    mutationFn: async ({ taskId, reason }: { taskId: string; reason: string }) => {
+    mutationFn: async ({ taskId, reason, userId }: { taskId: string; reason: string; userId: string }) => {
       const { error } = await supabase
         .from('tasks')
         .update({ status: 'dang_thuc_hien', last_return_reason: reason })
         .eq('id', taskId)
       if (error) throw error
+      const { error: eCmt } = await supabase
+        .from('comments')
+        .insert({ task_id: taskId, user_id: userId, content: `Lý do trả về: ${reason}` })
+      if (eCmt) throw eCmt
     },
-    onSuccess: invalidate,
+    onSuccess: (_d, v) => {
+      invalidate()
+      qc.invalidateQueries({ queryKey: ['comments', v.taskId] })
+    },
   })
 
   /** Chủ trì bấm "Sửa" trong tab Hoàn thành */

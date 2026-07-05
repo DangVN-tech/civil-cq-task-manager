@@ -13,12 +13,13 @@ export interface User {
   login_id: string
   full_name: string
   role: Role
+  is_admin: boolean
   pin_changed: boolean
   created_at: string
 }
 
 /* Cột được phép SELECT trên bảng users (pin_hash bị chặn ở tầng DB) */
-export const USER_COLS = 'id,login_id,full_name,role,pin_changed,created_at'
+export const USER_COLS = 'id,login_id,full_name,role,is_admin,pin_changed,created_at'
 
 export interface TaskAssignee {
   task_id: string
@@ -100,6 +101,11 @@ export const ROLE_LABEL: Record<Role, string> = {
   truong_phong: 'Trưởng phòng',
   pho_phong: 'Phó phòng',
   nhan_vien: 'Nhân viên',
+}
+
+/** Nhãn chức vụ hiển thị: tài khoản Admin hệ thống hiện là "Admin" */
+export function displayRole(u: User): string {
+  return u.is_admin ? 'Admin' : ROLE_LABEL[u.role]
 }
 
 export const PRIORITY_LABEL: Record<Priority, string> = {

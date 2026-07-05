@@ -53,8 +53,9 @@ export default function TaskForm({
     setError('')
   }, [open, editing])
 
+  // Admin hệ thống không tham gia thực hiện task
   const available = useMemo(
-    () => (users ?? []).filter((u) => !participantIds.includes(u.id)),
+    () => (users ?? []).filter((u) => !u.is_admin && !participantIds.includes(u.id)),
     [users, participantIds],
   )
   const byId = useMemo(() => new Map((users ?? []).map((u) => [u.id, u])), [users])

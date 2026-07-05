@@ -3,17 +3,19 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth, useCurrentUser } from '../../context/AuthContext'
 import { useRealtime } from '../../hooks/useRealtime'
 import { useTasks } from '../../hooks/useTasks'
-import { canManageStaff, canManageStorage, canViewDashboard, isParticipant } from '../../lib/permissions'
+import { canChangeOwnPin, canManageStaff, canManageStorage, canViewDashboard, isParticipant } from '../../lib/permissions'
 import { cn } from '../../lib/utils'
-import { ROLE_LABEL } from '../../types'
+import { displayRole } from '../../types'
 import { Button, Input } from '../ui'
 import ToastStack from '../notify/ToastStack'
+import ChangePinDialog from './ChangePinDialog'
 
 export default function AppShell() {
   const user = useCurrentUser()
   const { logout } = useAuth()
   const navigate = useNavigate()
   const [q, setQ] = useState('')
+  const [pinOpen, setPinOpen] = useState(false)
 
   useRealtime(user.id)
 
@@ -51,9 +53,14 @@ export default function AppShell() {
         {/* Góc phải trên: thông tin người dùng */}
         <div className="whitespace-nowrap text-right text-xs leading-tight">
           <div className="text-sm font-semibold">{user.full_name}</div>
-          {user.role !== 'nhan_vien' && <div className="text-gray-500">({ROLE_LABEL[user.role]})</div>}
+          {(user.role !== 'nhan_vien' || user.is_admin) && (
+            <div className="text-gray-500">({displayRole(user)})</div>
+          )}
           <div className="text-brand-600">Task của tôi: {myTaskCount}</div>
         </div>
+        {canChangeOwnPin(user) && (
+          <Button variant="ghost" onClick={() => setPinOpen(true)} title="Đổi PIN đăng nhập">Đổi PIN</Button>
+        )}
         <Button variant="ghost" onClick={logout} title="Đăng xuất">Đăng xuất</Button>
       </header>
 
@@ -74,6 +81,8 @@ export default function AppShell() {
 
       {/* Thông báo kiểu Outlook: góc phải dưới */}
       <ToastStack />
+
+      <ChangePinDialog open={pinOpen} onClose={() => setPinOpen(false)} />
     </div>
   )
 }

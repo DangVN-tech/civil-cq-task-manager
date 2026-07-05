@@ -1,17 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
+import { sortUsers } from '../lib/utils'
 import { USER_COLS, type Role, type User } from '../types'
 
 export function useUsers() {
   return useQuery({
     queryKey: ['users'],
     queryFn: async (): Promise<User[]> => {
-      const { data, error } = await supabase
-        .from('users')
-        .select(USER_COLS)
-        .order('full_name', { ascending: true })
+      const { data, error } = await supabase.from('users').select(USER_COLS)
       if (error) throw error
-      return (data ?? []) as User[]
+      // Thứ tự: Trưởng phòng -> Admin -> Phó phòng -> Nhân viên
+      return sortUsers((data ?? []) as User[])
     },
   })
 }

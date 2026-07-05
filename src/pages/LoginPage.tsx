@@ -57,8 +57,10 @@ export default function LoginPage() {
         setError('PIN không đúng.')
         return
       }
-      if (!pending.pin_changed) {
-        setStep('change_pin') // lần đầu đăng nhập: bắt buộc đổi PIN
+      // Lần đầu đăng nhập: bắt buộc đổi PIN.
+      // Riêng Admin không tự đổi PIN (PIN do Trưởng phòng cấp - cơ chế chéo).
+      if (!pending.pin_changed && !pending.is_admin) {
+        setStep('change_pin')
       } else {
         finishLogin(pending)
       }
@@ -131,7 +133,8 @@ export default function LoginPage() {
         {step === 'pin' && pending && (
           <form onSubmit={submitPin} className="space-y-3">
             <p className="text-sm">
-              Xin chào <b>{pending.full_name}</b> (Trưởng phòng). Nhập PIN để tiếp tục:
+              Xin chào <b>{pending.full_name}</b> ({pending.is_admin ? 'Admin' : 'Trưởng phòng'}).
+              Nhập PIN để tiếp tục:
             </p>
             <Field label="PIN (4 số)" required>
               <Input

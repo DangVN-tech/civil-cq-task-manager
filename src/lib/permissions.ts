@@ -1,18 +1,28 @@
 import type { Task, User } from '../types'
 
-/* Toàn bộ phân quyền tập trung tại đây */
+/* Toàn bộ phân quyền tập trung tại đây.
+   Admin hệ thống (is_admin): CHỈ xem task, quản lý nhân sự, quản lý dung lượng.
+   Không tạo/sửa/xóa/trả task, không comment, không upload. */
 
-export const isTruongPhong = (u: User) => u.role === 'truong_phong'
+export const isAdmin = (u: User) => u.is_admin
+
+/** Trưởng phòng THẬT của phòng (không tính tài khoản Admin hệ thống) */
+export const isTruongPhong = (u: User) => u.role === 'truong_phong' && !u.is_admin
 
 export const canCreateTask = isTruongPhong
 export const canEditTask = isTruongPhong        // sửa nội dung, deadline, ưu tiên, người thực hiện
 export const canDeleteTask = isTruongPhong
 export const canReturnTask = isTruongPhong      // trả task về làm lại
-export const canManageStaff = isTruongPhong
-export const canManageStorage = isTruongPhong
+
+export const canManageStaff = (u: User) => isTruongPhong(u) || isAdmin(u)
+export const canManageStorage = (u: User) => isTruongPhong(u) || isAdmin(u)
+
+/** Chỉ Trưởng phòng thật tự đổi PIN; PIN của Admin do Trưởng phòng cấp (cơ chế chéo) */
+export const canChangeOwnPin = isTruongPhong
+export const canSetAdminPin = isTruongPhong
 
 export const canViewDashboard = (u: User) =>
-  u.role === 'truong_phong' || u.role === 'pho_phong'
+  isTruongPhong(u) || u.role === 'pho_phong' || isAdmin(u)
 
 export function isParticipant(task: Task, u: User): boolean {
   return task.assignees.some((a) => a.user_id === u.id)
@@ -36,12 +46,12 @@ export function canReopenCompleted(task: Task, u: User): boolean {
   return task.status === 'hoan_thanh' && isChuTri(task, u)
 }
 
-/** Upload file: người tham gia task (hoặc trưởng phòng), chỉ khi đang thực hiện */
+/** Upload file: người tham gia task (hoặc trưởng phòng thật), chỉ khi đang thực hiện */
 export function canUploadFile(task: Task, u: User): boolean {
   return task.status === 'dang_thuc_hien' && (isParticipant(task, u) || isTruongPhong(u))
 }
 
-/** Comment: người tham gia; trưởng phòng được phản hồi. Chỉ khi đang thực hiện */
+/** Comment: người tham gia; trưởng phòng thật được phản hồi. Chỉ khi đang thực hiện */
 export function canComment(task: Task, u: User): boolean {
   return task.status === 'dang_thuc_hien' && (isParticipant(task, u) || isTruongPhong(u))
 }
