@@ -16,15 +16,18 @@ interface ProjectNode {
   groups: { id: string; name: string; tasks: Task[] }[]
 }
 
-/** Chế độ xem cây thư mục: Dự án -> Nhóm công việc -> Task. */
+/** Chế độ xem cây thư mục: Dự án -> Nhóm công việc -> Task.
+ *  onAddTask (chỉ Trưởng phòng): hiện nút ➕ trên từng nhóm để tạo task vào đúng vị trí đó. */
 export default function TaskTree({
   tasks,
   selectedId,
   onSelect,
+  onAddTask,
 }: {
   tasks: Task[]
   selectedId: string | null
   onSelect: (id: string) => void
+  onAddTask?: (groupId: string) => void
 }) {
   // Nút nào đang thu gọn (mặc định: tất cả mở rộng)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -88,14 +91,25 @@ export default function TaskTree({
               return (
                 <div key={grp.id} className="ml-4">
                   {/* Cấp 2: Nhóm công việc */}
-                  <button
-                    onClick={() => toggle(gKey)}
-                    className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-left text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
-                  >
-                    <span className="w-3 text-[10px] text-slate-400">{gOpen ? '▼' : '▶'}</span>
-                    <span className="min-w-0 flex-1 truncate">📁 {grp.name}</span>
-                    <span className="shrink-0 text-[10px] text-slate-400">{grp.tasks.length}</span>
-                  </button>
+                  <div className="group/row flex items-center">
+                    <button
+                      onClick={() => toggle(gKey)}
+                      className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-2 py-1 text-left text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      <span className="w-3 text-[10px] text-slate-400">{gOpen ? '▼' : '▶'}</span>
+                      <span className="min-w-0 flex-1 truncate">📁 {grp.name}</span>
+                      <span className="shrink-0 text-[10px] text-slate-400">{grp.tasks.length}</span>
+                    </button>
+                    {onAddTask && grp.id !== '_none' && (
+                      <button
+                        onClick={() => onAddTask(grp.id)}
+                        title="Tạo task vào nhóm này"
+                        className="mr-1 shrink-0 rounded-md px-1.5 py-0.5 text-sm font-bold text-brand-500 opacity-0 transition-opacity hover:bg-brand-50 group-hover/row:opacity-100"
+                      >
+                        ＋
+                      </button>
+                    )}
+                  </div>
 
                   {/* Cấp 3: Task */}
                   {gOpen && grp.tasks.map((t) => {

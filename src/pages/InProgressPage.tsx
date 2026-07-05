@@ -24,6 +24,7 @@ export default function InProgressPage() {
   const selectedId = params.get('task')
 
   const [createOpen, setCreateOpen] = useState(false)
+  const [createGroupId, setCreateGroupId] = useState<string | null>(null)
   const [myOnly, setMyOnly] = useState(false)
   const [priority, setPriority] = useState<'' | Priority>('')
   const [sortBy, setSortBy] = useState<SortBy>('default')
@@ -78,7 +79,8 @@ export default function InProgressPage() {
       <div className="flex shrink-0 flex-col border-r border-slate-100 bg-white" style={{ width }}>
         <div className="space-y-2 border-b border-slate-100 bg-slate-50/50 p-3">
           {canCreateTask(user) && (
-            <Button variant="primary" className="w-full justify-center rounded-xl" onClick={() => setCreateOpen(true)}>
+            <Button variant="primary" className="w-full justify-center rounded-xl"
+              onClick={() => { setCreateGroupId(null); setCreateOpen(true) }}>
               + Tạo task
             </Button>
           )}
@@ -157,7 +159,14 @@ export default function InProgressPage() {
           {isLoading ? (
             <Loading />
           ) : view === 'tree' ? (
-            <TaskTree tasks={list} selectedId={selectedId} onSelect={selectTask} />
+            <TaskTree
+              tasks={list}
+              selectedId={selectedId}
+              onSelect={selectTask}
+              onAddTask={canCreateTask(user)
+                ? (gid) => { setCreateGroupId(gid); setCreateOpen(true) }
+                : undefined}
+            />
           ) : list.length === 0 ? (
             <Empty label="Không có task nào." />
           ) : (
@@ -181,7 +190,11 @@ export default function InProgressPage() {
         )}
       </div>
 
-      <TaskForm open={createOpen} onClose={() => setCreateOpen(false)} />
+      <TaskForm
+        open={createOpen}
+        onClose={() => { setCreateOpen(false); setCreateGroupId(null) }}
+        initialGroupId={createGroupId}
+      />
     </div>
   )
 }
