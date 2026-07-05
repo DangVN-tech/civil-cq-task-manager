@@ -18,51 +18,51 @@ export default function StaffPage() {
   if (isLoading) return <Loading />
 
   return (
-    <div className="h-full overflow-y-auto p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-base font-bold">Quản lý nhân sự phòng</h2>
-        <Button variant="primary" onClick={() => { setEditing(null); setFormOpen(true) }}>
+    <div className="h-full space-y-5 overflow-y-auto p-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-slate-950">Quản lý nhân sự phòng</h2>
+        <Button variant="primary" className="rounded-xl" onClick={() => { setEditing(null); setFormOpen(true) }}>
           + Thêm nhân sự
         </Button>
       </div>
 
-      <div className="border border-gray-300 bg-white">
-        <table className="w-full text-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-sm">
+        <table className="w-full text-left text-sm">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50 text-left text-xs text-gray-500">
-              <th className="px-3 py-2 font-semibold">Họ tên</th>
-              <th className="px-3 py-2 font-semibold">ID đăng nhập</th>
-              <th className="px-3 py-2 font-semibold">Chức vụ</th>
-              <th className="px-3 py-2 font-semibold">Ngày tạo</th>
-              <th className="px-3 py-2 text-right font-semibold">Thao tác</th>
+            <tr className="border-b border-slate-100 bg-slate-50/50 text-xs font-bold text-slate-400">
+              <th className="p-4 font-bold">Họ tên</th>
+              <th className="p-4 font-bold">ID đăng nhập</th>
+              <th className="p-4 font-bold">Chức vụ</th>
+              <th className="p-4 font-bold">Ngày tạo</th>
+              <th className="p-4 text-right font-bold">Thao tác</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100">
             {(users ?? []).map((u) => (
-              <tr key={u.id} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="px-3 py-2 font-medium">
-                  {u.full_name} {u.id === me.id && <span className="text-xs text-gray-400">(bạn)</span>}
+              <tr key={u.id} className="transition-colors hover:bg-slate-50/50">
+                <td className="p-4 font-semibold text-slate-900">
+                  {u.full_name} {u.id === me.id && <span className="text-xs font-normal text-slate-400">(bạn)</span>}
                 </td>
-                <td className="px-3 py-2 font-mono text-xs">{u.login_id}</td>
-                <td className="px-3 py-2 text-xs">{displayRole(u)}</td>
-                <td className="px-3 py-2 text-xs text-gray-500">{fmtDate(u.created_at)}</td>
-                <td className="px-3 py-2 text-right">
+                <td className="p-4 font-mono text-xs text-slate-500">{u.login_id}</td>
+                <td className="p-4"><RoleBadge u={u} /></td>
+                <td className="p-4 text-xs text-slate-500">{fmtDate(u.created_at)}</td>
+                <td className="p-4 text-right">
                   {u.is_admin ? (
                     // Admin không có PIN riêng: dùng chung PIN với Trưởng phòng (cơ chế chéo)
-                    <span className="text-[11px] text-gray-400">PIN dùng chung với Trưởng phòng</span>
+                    <span className="text-[11px] italic text-slate-400">PIN dùng chung với Trưởng phòng</span>
                   ) : (
-                    <>
-                      <Button variant="ghost" className="px-2 py-0.5 text-xs"
+                    <span className="space-x-3 text-xs font-medium">
+                      <button className="text-brand-500 hover:underline"
                         onClick={() => { setEditing(u); setFormOpen(true) }}>
                         Sửa
-                      </Button>
+                      </button>
                       {u.id !== me.id && (
-                        <Button variant="ghost" className="px-2 py-0.5 text-xs text-red-600"
+                        <button className="text-rose-600 hover:underline"
                           onClick={() => setDeleting(u)}>
                           Xóa
-                        </Button>
+                        </button>
                       )}
-                    </>
+                    </span>
                   )}
                 </td>
               </tr>
@@ -71,7 +71,7 @@ export default function StaffPage() {
         </table>
       </div>
 
-      <p className="mt-2 text-xs text-gray-400">
+      <p className="text-xs text-slate-400">
         Đổi chức vụ sẽ tự động cập nhật quyền hệ thống. Trưởng phòng mới có PIN mặc định 0000
         (bắt buộc đổi ở lần đăng nhập đầu).
       </p>
@@ -95,6 +95,16 @@ export default function StaffPage() {
 
     </div>
   )
+}
+
+/** Huy hiệu chức vụ màu theo mockup: Trưởng phòng/Admin tím, Phó phòng chàm, Nhân viên xám */
+function RoleBadge({ u }: { u: User }) {
+  const cls = u.is_admin || u.role === 'truong_phong'
+    ? 'bg-violet-50 text-violet-700 font-semibold'
+    : u.role === 'pho_phong'
+      ? 'bg-indigo-50 text-indigo-700 font-semibold'
+      : 'bg-slate-50 text-slate-600 font-medium'
+  return <span className={`rounded px-2 py-0.5 text-xs ${cls}`}>{displayRole(u)}</span>
 }
 
 function StaffForm({

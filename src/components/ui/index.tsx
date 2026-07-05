@@ -9,15 +9,15 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: BtnVariant }) {
   const styles: Record<BtnVariant, string> = {
-    primary: 'bg-brand-500 text-white hover:bg-brand-600 border-brand-600',
-    secondary: 'bg-white text-gray-800 hover:bg-gray-100 border-gray-300',
-    danger: 'bg-red-600 text-white hover:bg-red-700 border-red-700',
-    ghost: 'bg-transparent text-gray-700 hover:bg-gray-200 border-transparent',
+    primary: 'bg-brand-500 text-white hover:bg-brand-600 border-transparent shadow-sm shadow-blue-100',
+    secondary: 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200',
+    danger: 'bg-white text-rose-600 hover:bg-rose-50 border-rose-200',
+    ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 border-transparent',
   }
   return (
     <button
       className={cn(
-        'inline-flex items-center gap-1.5 border px-3 py-1.5 text-sm font-medium',
+        'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
         'disabled:cursor-not-allowed disabled:opacity-50',
         styles[variant],
         className,
@@ -29,7 +29,7 @@ export function Button({
 
 /* ============ Input / Textarea / Select ============ */
 const fieldCls =
-  'w-full border border-gray-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-brand-500'
+  'w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none transition-all focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20'
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(fieldCls, className)} {...props} />
@@ -50,8 +50,8 @@ export function Select({ className, children, ...props }: SelectHTMLAttributes<H
 export function Field({ label, children, required }: { label: string; children: ReactNode; required?: boolean }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-semibold text-gray-600">
-        {label} {required && <span className="text-red-600">*</span>}
+      <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-400">
+        {label} {required && <span className="text-rose-500">*</span>}
       </span>
       {children}
     </label>
@@ -81,14 +81,14 @@ export function Dialog({
 
   if (!open) return null
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onMouseDown={onClose}>
       <div
-        className={cn('w-full border border-gray-400 bg-white shadow-xl', width)}
+        className={cn('w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl', width)}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-2.5">
-          <h2 className="text-sm font-semibold">{title}</h2>
-          <button onClick={onClose} className="px-1 text-gray-500 hover:text-gray-800" aria-label="Đóng">✕</button>
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-3">
+          <h2 className="text-sm font-bold text-slate-900">{title}</h2>
+          <button onClick={onClose} className="rounded-md px-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Đóng">✕</button>
         </div>
         <div className="max-h-[80vh] overflow-y-auto p-4">{children}</div>
       </div>
@@ -116,7 +116,7 @@ export function ConfirmDialog({
 }) {
   return (
     <Dialog open={open} onClose={onClose} title={title} width="max-w-sm">
-      <div className="text-sm text-gray-700">{message}</div>
+      <div className="text-sm text-slate-700">{message}</div>
       <div className="mt-4 flex justify-end gap-2">
         <Button onClick={onClose}>Hủy</Button>
         <Button variant={danger ? 'danger' : 'primary'} onClick={() => { onConfirm(); onClose() }}>
@@ -130,20 +130,24 @@ export function ConfirmDialog({
 /* ============ Progress bar ============ */
 export function ProgressBar({ value, className }: { value: number; className?: string }) {
   return (
-    <div className={cn('h-2 w-full bg-gray-200', className)}>
+    <div className={cn('h-2 w-full overflow-hidden rounded-full bg-slate-100', className)}>
       <div
-        className={cn('h-full', value >= 100 ? 'bg-green-600' : 'bg-brand-500')}
+        className={cn('h-full rounded-full transition-all duration-500',
+          value >= 100 ? 'bg-emerald-500' : 'bg-brand-500')}
         style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
       />
     </div>
   )
 }
 
+/* ============ Card (thẻ trắng bo tròn theo mockup) ============ */
+export const cardCls = 'rounded-xl border border-slate-100 bg-white shadow-sm'
+
 /* ============ Spinner / empty state ============ */
 export function Loading({ label = 'Đang tải...' }: { label?: string }) {
-  return <div className="p-6 text-center text-sm text-gray-500">{label}</div>
+  return <div className="p-6 text-center text-sm text-slate-400">{label}</div>
 }
 
 export function Empty({ label }: { label: string }) {
-  return <div className="p-8 text-center text-sm text-gray-400">{label}</div>
+  return <div className="p-8 text-center text-sm text-slate-400">{label}</div>
 }

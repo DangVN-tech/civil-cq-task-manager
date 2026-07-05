@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import TaskCard from '../components/task/TaskCard'
 import TaskDetail from '../components/task/TaskDetail'
 import { Button, Empty, Loading, Select } from '../components/ui'
+import { ResizeHandle, useColumnResize } from '../hooks/useColumnResize'
 import { useTasks } from '../hooks/useTasks'
 import { completedGroupLabel } from '../lib/utils'
 import { PRIORITY_LABEL, type Priority, type Task } from '../types'
@@ -21,7 +22,7 @@ export default function CompletedPage() {
   const groups = useMemo(() => {
     let arr = tasks ?? []
     if (priority) arr = arr.filter((t) => t.priority === priority)
-    if (sortBy === 'deadline') arr = [...arr].sort((a, b) => a.deadline.localeCompare(b.deadline))
+    if (sortBy === 'deadline') arr = [...arr].sort((a, b) => (a.deadline ?? '9999').localeCompare(b.deadline ?? '9999'))
     else if (sortBy === 'title') arr = [...arr].sort((a, b) => a.title.localeCompare(b.title, 'vi'))
     else arr = [...arr].sort((a, b) => (b.completed_at ?? '').localeCompare(a.completed_at ?? ''))
 
@@ -37,11 +38,12 @@ export default function CompletedPage() {
   }, [tasks, priority, sortBy])
 
   const selected = (tasks ?? []).find((t) => t.id === selectedId) ?? null
+  const { width, startDrag } = useColumnResize('ccq-w-list', 400, 300, 640)
 
   return (
     <div className="flex h-full">
-      <div className="flex w-[400px] shrink-0 flex-col border-r border-gray-300 bg-white">
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-gray-200 bg-gray-50 p-2 text-xs">
+      <div className="flex shrink-0 flex-col border-r border-slate-100 bg-white" style={{ width }}>
+        <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 bg-slate-50/50 p-3 text-xs">
           <Select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} className="w-auto py-1 text-xs">
             <option value="date">Theo ngày hoàn thành</option>
             <option value="deadline">Theo deadline</option>
@@ -61,16 +63,16 @@ export default function CompletedPage() {
           )}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {isLoading ? (
             <Loading />
           ) : groups.every((g) => g.items.length === 0) ? (
             <Empty label="Chưa có task hoàn thành." />
           ) : (
             groups.map((g) => (
-              <div key={g.label || 'all'}>
+              <div key={g.label || 'all'} className="mb-3 space-y-2.5">
                 {g.label && (
-                  <div className="sticky top-0 border-b border-gray-200 bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600">
+                  <div className="sticky top-0 z-[1] bg-white px-1 pb-1 pt-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                     {g.label}
                   </div>
                 )}
@@ -83,6 +85,8 @@ export default function CompletedPage() {
           )}
         </div>
       </div>
+
+      <ResizeHandle onMouseDown={startDrag} />
 
       <div className="min-w-0 flex-1">
         {selected ? <TaskDetail task={selected} /> : <Empty label="Chọn một task để xem chi tiết." />}

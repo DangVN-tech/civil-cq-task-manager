@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import TaskCard from '../components/task/TaskCard'
 import TaskDetail from '../components/task/TaskDetail'
 import { Empty, Loading } from '../components/ui'
+import { ResizeHandle, useColumnResize } from '../hooks/useColumnResize'
 import { useAllTasks } from '../hooks/useTasks'
 import type { Task } from '../types'
 
@@ -17,6 +18,7 @@ function matches(task: Task, q: string): boolean {
   if (task.files.some((f) => normalize(f.file_name).includes(q))) return true
   if (task.assignees.some((a) => a.user && normalize(a.user.full_name).includes(q))) return true
   if (task.assignees.some((a) => a.user && normalize(a.user.login_id).includes(q))) return true
+  if ((task.external_collabs ?? []).some((n) => normalize(n).includes(q))) return true
   return false
 }
 
@@ -31,14 +33,15 @@ export default function SearchPage() {
     [tasks, q],
   )
   const selected = results.find((t) => t.id === selectedId) ?? null
+  const { width, startDrag } = useColumnResize('ccq-w-list', 400, 300, 640)
 
   return (
     <div className="flex h-full">
-      <div className="flex w-[400px] shrink-0 flex-col border-r border-gray-300 bg-white">
-        <div className="border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-          Kết quả tìm kiếm cho “{params.get('q')}”: <b>{results.length}</b> task
+      <div className="flex shrink-0 flex-col border-r border-slate-100 bg-white" style={{ width }}>
+        <div className="border-b border-slate-100 bg-slate-50/50 px-4 py-2.5 text-xs text-slate-500">
+          Kết quả tìm kiếm cho “{params.get('q')}”: <b className="text-slate-800">{results.length}</b> task
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-3">
           {isLoading ? (
             <Loading />
           ) : results.length === 0 ? (
@@ -51,6 +54,8 @@ export default function SearchPage() {
           )}
         </div>
       </div>
+      <ResizeHandle onMouseDown={startDrag} />
+
       <div className="min-w-0 flex-1">
         {selected ? <TaskDetail task={selected} /> : <Empty label="Chọn một task để xem chi tiết." />}
       </div>

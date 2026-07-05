@@ -5,6 +5,7 @@ import TaskDetail from '../components/task/TaskDetail'
 import TaskForm from '../components/task/TaskForm'
 import { Button, Empty, Loading, Select } from '../components/ui'
 import { useCurrentUser } from '../context/AuthContext'
+import { ResizeHandle, useColumnResize } from '../hooks/useColumnResize'
 import { useTasks } from '../hooks/useTasks'
 import { canCreateTask, isParticipant } from '../lib/permissions'
 import { cn, sortInProgress } from '../lib/utils'
@@ -29,19 +30,20 @@ export default function InProgressPage() {
     if (myOnly) arr = arr.filter((t) => isParticipant(t, user))
     if (priority) arr = arr.filter((t) => t.priority === priority)
     if (sortBy === 'deadline')
-      return [...arr].sort((a, b) => a.deadline.localeCompare(b.deadline))
+      return [...arr].sort((a, b) => (a.deadline ?? '9999').localeCompare(b.deadline ?? '9999'))
     if (sortBy === 'title')
       return [...arr].sort((a, b) => a.title.localeCompare(b.title, 'vi'))
     return sortInProgress(arr) // mặc định: Khẩn -> Gấp -> Quá hạn (Thường) -> Thường
   }, [tasks, myOnly, priority, sortBy, user])
 
   const selected = (tasks ?? []).find((t) => t.id === selectedId) ?? null
+  const { width, startDrag } = useColumnResize('ccq-w-list', 400, 300, 640)
 
   return (
     <div className="flex h-full">
       {/* ===== Cột danh sách ===== */}
-      <div className="flex w-[400px] shrink-0 flex-col border-r border-gray-300 bg-white">
-        <div className="space-y-2 border-b border-gray-200 bg-gray-50 p-2">
+      <div className="flex shrink-0 flex-col border-r border-slate-100 bg-white" style={{ width }}>
+        <div className="space-y-2 border-b border-slate-100 bg-slate-50/50 p-3">
           {canCreateTask(user) && (
             <Button variant="primary" className="w-full justify-center" onClick={() => setCreateOpen(true)}>
               + Tạo task
@@ -75,7 +77,7 @@ export default function InProgressPage() {
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-3">
           {isLoading ? (
             <Loading />
           ) : list.length === 0 ? (
@@ -88,6 +90,9 @@ export default function InProgressPage() {
           )}
         </div>
       </div>
+
+      {/* Thanh nắm kéo chỉnh độ rộng */}
+      <ResizeHandle onMouseDown={startDrag} />
 
       {/* ===== Cột chi tiết ===== */}
       <div className="min-w-0 flex-1">

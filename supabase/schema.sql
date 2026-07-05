@@ -31,6 +31,7 @@ create table users (
   login_id    text not null unique check (login_id ~ '^[a-z0-9]+$'),
   full_name   text not null,
   role        user_role not null default 'nhan_vien',
+  is_admin    boolean not null default false,  -- Admin hệ thống: chỉ xem task + quản trị
   pin_hash    text,               -- chỉ dùng cho trưởng phòng (SHA-256 hex)
   pin_changed boolean not null default false,
   created_at  timestamptz not null default now()
@@ -42,7 +43,7 @@ create table tasks (
   title              text not null,
   description        text not null default '',
   assigned_date      date not null default current_date,
-  deadline           timestamptz not null,
+  deadline           timestamptz,   -- trống = công việc thường xuyên, không có hạn
   priority           task_priority not null default 'thuong',
   status             task_status not null default 'dang_thuc_hien',
   progress           int not null default 0 check (progress between 0 and 100),
@@ -50,6 +51,7 @@ create table tasks (
   completed_at       timestamptz,
   completed_by       uuid references users(id) on delete set null,
   last_return_reason text,
+  external_collabs   text[] not null default '{}',  -- phối hợp ngoài phòng (nhập tự do)
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now()
 );
@@ -210,7 +212,7 @@ begin
     end if;
   end if;
 
-  -- Deadline thay đổi
+  -- Deadline thay đổi (kể cả thêm mới hoặc bỏ deadline)
   if new.deadline is distinct from old.deadline then
     -- Xóa các mốc nhắc deadline cũ để hệ thống nhắc lại theo deadline mới
     delete from notifications
@@ -218,8 +220,13 @@ begin
       and type in ('deadline_24h', 'deadline_8h', 'deadline_2h');
     insert into notifications(user_id, task_id, type, message)
     select ta.user_id, new.id, 'deadline_changed',
-           'Deadline task "' || new.title || '" đã đổi thành ' ||
-           to_char(new.deadline at time zone 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY HH24:MI')
+           case
+             when new.deadline is null then
+               'Task "' || new.title || '" không còn deadline (công việc thường xuyên).'
+             else
+               'Deadline task "' || new.title || '" đã đổi thành ' ||
+               to_char(new.deadline at time zone 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY HH24:MI')
+           end
     from task_assignees ta where ta.task_id = new.id;
   end if;
 
@@ -232,13 +239,23 @@ create trigger trg_task_updated before update on tasks
 -- 4. RPC (gọi từ client)
 -- ============================================================
 
--- 4.1 Kiểm tra PIN trưởng phòng (client gửi SHA-256 hex của PIN)
+-- 4.1 Kiểm tra PIN (client gửi SHA-256 hex của PIN).
+--     Admin KHÔNG có PIN riêng: đăng nhập bằng PIN của Trưởng phòng thật (cơ chế chéo).
 create or replace function fn_verify_pin(p_login_id text, p_pin_hash text)
 returns boolean language plpgsql security definer as $$
 declare v_ok boolean;
 begin
-  select (pin_hash = p_pin_hash) into v_ok
-  from users where login_id = p_login_id and role = 'truong_phong';
+  select case
+    when u.is_admin then exists (
+      select 1 from users tp
+      where tp.role = 'truong_phong' and tp.is_admin = false
+        and tp.pin_hash = p_pin_hash
+    )
+    else u.pin_hash = p_pin_hash
+  end
+  into v_ok
+  from users u
+  where u.login_id = p_login_id and u.role = 'truong_phong';
   return coalesce(v_ok, false);
 end $$;
 
@@ -323,7 +340,7 @@ create policy anon_all on notifications  for all to anon using (true) with check
 
 -- Bảo vệ cột pin_hash: client KHÔNG BAO GIỜ đọc/ghi trực tiếp
 revoke select, insert, update on users from anon;
-grant select (id, login_id, full_name, role, pin_changed, created_at) on users to anon;
+grant select (id, login_id, full_name, role, is_admin, pin_changed, created_at) on users to anon;
 grant insert (login_id, full_name, role) on users to anon;
 grant update (login_id, full_name, role) on users to anon;
 grant delete on users to anon;
@@ -353,8 +370,11 @@ create policy anon_storage_delete on storage.objects
   for delete to anon using (bucket_id = 'task-files');
 
 -- ============================================================
--- 8. SEED: tài khoản Trưởng phòng đầu tiên
---    ID: admin | PIN mặc định: 0000 (bắt buộc đổi lần đầu)
+-- 8. SEED: tài khoản Admin hệ thống
+--    ID: admin | đăng nhập bằng PIN của Trưởng phòng thật
+--    (khi chưa có trưởng phòng nào: tạo trưởng phòng trong bảng users
+--     trước, PIN mặc định 0000)
 -- ============================================================
 insert into users (login_id, full_name, role)
 values ('admin', 'Quản trị viên', 'truong_phong');
+update users set is_admin = true where login_id = 'admin';

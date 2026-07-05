@@ -55,25 +55,25 @@ function Toast({ n, onClose, onSnooze }: {
   }
 
   return (
-    <div className="border border-gray-400 bg-white shadow-lg">
-      <div className="flex items-center justify-between border-b border-gray-200 bg-brand-500 px-3 py-1.5">
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+      <div className="flex items-center justify-between bg-brand-500 px-3 py-2">
         <span className="text-xs font-semibold text-white">Civil&CQ Task Manager</span>
         <button onClick={onClose} className="text-xs text-white/90 hover:text-white" aria-label="Đóng">✕</button>
       </div>
-      <button onClick={open} className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50">
+      <button onClick={open} className="block w-full px-3 py-2.5 text-left text-sm text-slate-800 transition-colors hover:bg-slate-50">
         {n.message}
-        <span className="mt-1 block text-[11px] text-gray-400">{fmtTime(n.created_at)}</span>
+        <span className="mt-1 block text-[11px] text-slate-400">{fmtTime(n.created_at)}</span>
       </button>
-      <div className="flex items-center gap-1.5 border-t border-gray-200 bg-gray-50 px-3 py-1.5">
+      <div className="flex items-center gap-1.5 border-t border-slate-100 bg-slate-50/50 px-3 py-1.5">
         <Button variant="ghost" className="px-2 py-0.5 text-xs" onClick={() => onSnooze(minutes)}>
           Nhắc tôi sau
         </Button>
         <input
           type="number" min={1} max={1440} value={minutes}
           onChange={(e) => setMinutes(Math.max(1, Number(e.target.value) || 15))}
-          className="w-14 border border-gray-300 px-1 py-0.5 text-center text-xs"
+          className="w-14 rounded-md border border-slate-200 px-1 py-0.5 text-center text-xs"
         />
-        <span className="text-xs text-gray-500">phút</span>
+        <span className="text-xs text-slate-500">phút</span>
       </div>
     </div>
   )

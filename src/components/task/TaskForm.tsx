@@ -28,6 +28,8 @@ export default function TaskForm({
   const [deadline, setDeadline] = useState('')
   const [priority, setPriority] = useState<Priority>('thuong')
   const [participantIds, setParticipantIds] = useState<string[]>([])
+  const [externals, setExternals] = useState<string[]>([])
+  const [externalInput, setExternalInput] = useState('')
   const [refFiles, setRefFiles] = useState<File[]>([])
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -38,17 +40,20 @@ export default function TaskForm({
       setTitle(editing.title)
       setDescription(editing.description)
       setAssignedDate(editing.assigned_date)
-      setDeadline(format(new Date(editing.deadline), "yyyy-MM-dd'T'HH:mm"))
+      setDeadline(editing.deadline ? format(new Date(editing.deadline), "yyyy-MM-dd'T'HH:mm") : '')
       setPriority(editing.priority)
       const chuTri = editing.assignees.filter((a) => a.assign_role === 'chu_tri').map((a) => a.user_id)
       const phoiHop = editing.assignees.filter((a) => a.assign_role === 'phoi_hop').map((a) => a.user_id)
       setParticipantIds([...chuTri, ...phoiHop])
+      setExternals(editing.external_collabs ?? [])
     } else {
       setTitle(''); setDescription(''); setPriority('thuong')
       setAssignedDate(format(new Date(), 'yyyy-MM-dd'))
       setDeadline('')
       setParticipantIds([])
+      setExternals([])
     }
+    setExternalInput('')
     setRefFiles([])
     setError('')
   }, [open, editing])
@@ -66,10 +71,16 @@ export default function TaskForm({
     setRefFiles(files)
   }
 
+  const addExternal = () => {
+    const name = externalInput.trim()
+    if (!name) return
+    if (!externals.includes(name)) setExternals([...externals, name])
+    setExternalInput('')
+  }
+
   const submit = async () => {
     setError('')
     if (!title.trim()) return setError('Chưa nhập đầu mục công việc.')
-    if (!deadline) return setError('Chưa chọn deadline.')
     if (participantIds.length === 0) return setError('Bắt buộc chọn Chủ trì (người được chọn đầu tiên).')
     if (refFiles.length > 0) {
       const err = validateFiles(refFiles)
@@ -79,9 +90,11 @@ export default function TaskForm({
       title: title.trim(),
       description,
       assigned_date: assignedDate,
-      deadline: new Date(deadline).toISOString(),
+      // Không chọn deadline = công việc thường xuyên, không có hạn hoàn thành
+      deadline: deadline ? new Date(deadline).toISOString() : null,
       priority,
       participantIds,
+      externalCollabs: externals,
     }
     setBusy(true)
     try {
@@ -117,7 +130,7 @@ export default function TaskForm({
           <Field label="Ngày giao việc" required>
             <Input type="date" value={assignedDate} onChange={(e) => setAssignedDate(e.target.value)} />
           </Field>
-          <Field label="Deadline" required>
+          <Field label="Deadline (bỏ trống = việc thường xuyên)">
             <Input type="datetime-local" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
           </Field>
           <Field label="Ưu tiên" required>
@@ -161,9 +174,39 @@ export default function TaskForm({
                 <option key={u.id} value={u.id}>{u.full_name} ({u.login_id})</option>
               ))}
             </Select>
-            {participantIds.length === 1 && (
-              <p className="text-[11px] text-gray-500">Không có phối hợp: Chủ trì tự thực hiện toàn bộ công việc.</p>
+            {participantIds.length === 1 && externals.length === 0 && (
+              <p className="text-[11px] text-slate-500">Không có phối hợp: Chủ trì tự thực hiện toàn bộ công việc.</p>
             )}
+          </div>
+        </Field>
+
+        {/* Phối hợp ngoài phòng: nhập tự do, chỉ để thành viên biết cần phối hợp với ai */}
+        <Field label="Ai đó khác... (phối hợp ngoài phòng, nhập tự do)">
+          <div className="space-y-2">
+            {externals.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {externals.map((name) => (
+                  <span key={name}
+                    className="inline-flex items-center gap-1 rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-0.5 text-xs text-slate-600">
+                    Phối hợp (ngoài): {name}
+                    <button onClick={() => setExternals(externals.filter((x) => x !== name))}
+                      className="text-slate-400 hover:text-rose-600">✕</button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Input
+                value={externalInput}
+                onChange={(e) => setExternalInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addExternal() } }}
+                placeholder="Ví dụ: Phòng Kế toán - anh Nam"
+              />
+              <Button type="button" onClick={addExternal} disabled={!externalInput.trim()}>+ Thêm</Button>
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Người ngoài phòng không có tài khoản — chỉ hiển thị để thành viên biết cần phối hợp với ai.
+            </p>
           </div>
         </Field>
 

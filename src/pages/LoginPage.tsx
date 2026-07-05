@@ -103,10 +103,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-full items-center justify-center bg-gray-100">
-      <div className="w-full max-w-sm border border-gray-300 bg-white p-6 shadow-sm">
-        <h1 className="mb-1 text-center text-lg font-bold text-brand-700">Civil&CQ Task Manager</h1>
-        <p className="mb-5 text-center text-xs text-gray-500">Hệ thống quản lý công việc nội bộ</p>
+    <div className="flex min-h-full items-center justify-center bg-[#f8fafc]">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-100 bg-white p-6 shadow-lg shadow-slate-200/50">
+        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-500 text-lg font-bold text-white shadow-md shadow-blue-200">
+          C
+        </div>
+        <h1 className="mb-1 text-center text-lg font-bold tracking-tight text-slate-900">
+          Civil<span className="text-brand-500">&</span>CQ Task Manager
+        </h1>
+        <p className="mb-5 text-center text-xs text-slate-400">Hệ thống quản lý công việc nội bộ</p>
 
         {!supabaseConfigured && (
           <div className="mb-4 border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800">

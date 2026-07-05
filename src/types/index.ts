@@ -81,7 +81,8 @@ export interface Task {
   title: string
   description: string
   assigned_date: string
-  deadline: string
+  /** null = công việc thường xuyên, không có hạn hoàn thành */
+  deadline: string | null
   priority: Priority
   status: Status
   progress: number
@@ -89,6 +90,8 @@ export interface Task {
   completed_at: string | null
   completed_by: string | null
   last_return_reason: string | null
+  /** Phối hợp ngoài phòng (tên tự do, không cần tài khoản) */
+  external_collabs: string[]
   created_at: string
   updated_at: string
   assignees: TaskAssignee[]

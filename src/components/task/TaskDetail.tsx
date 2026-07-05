@@ -5,9 +5,9 @@ import {
   canComplete, canDeleteTask, canEditTask, canReopenCompleted,
   canReturnTask, canUpdateProgress,
 } from '../../lib/permissions'
-import { fmtDate, fmtDateTime, timeLeftLabel } from '../../lib/utils'
+import { cn, fmtDate, fmtDateTime, timeLeftLabel } from '../../lib/utils'
 import type { Task } from '../../types'
-import { Button, ConfirmDialog, Dialog, ProgressBar, Select, Textarea } from '../ui'
+import { Button, cardCls, ConfirmDialog, Dialog, ProgressBar, Select, Textarea } from '../ui'
 import ActivityLogView from './ActivityLogView'
 import CommentSection from './CommentSection'
 import FileSection from './FileSection'
@@ -30,15 +30,20 @@ export default function TaskDetail({ task }: { task: Task }) {
   const chuTri = task.assignees.find((a) => a.assign_role === 'chu_tri')
   const phoiHop = task.assignees.filter((a) => a.assign_role === 'phoi_hop')
   const inProgress = task.status === 'dang_thuc_hien'
-  const left = timeLeftLabel(task.deadline)
+  const left = timeLeftLabel(task.deadline) // null = không có deadline
+  // Phối hợp = thành viên phòng + người ngoài phòng (nhập tự do)
+  const phoiHopNames = [
+    ...phoiHop.map((a) => a.user?.full_name ?? ''),
+    ...(task.external_collabs ?? []).map((n) => `${n} (ngoài phòng)`),
+  ].filter(Boolean)
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-white">
+    <div className="flex h-full flex-col overflow-y-auto bg-slate-50/50">
       {/* Header */}
-      <div className="border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center gap-2">
+      <div className="border-b border-slate-100 bg-white px-5 py-4">
+        <div className="flex items-center gap-2.5">
           <MarkDot task={task} />
-          <h2 className="min-w-0 flex-1 truncate text-base font-bold">{task.title}</h2>
+          <h2 className="min-w-0 flex-1 truncate text-lg font-bold text-slate-900">{task.title}</h2>
           <PriorityBadge priority={task.priority} />
         </div>
 
@@ -62,22 +67,25 @@ export default function TaskDetail({ task }: { task: Task }) {
         </div>
       </div>
 
-      <div className="space-y-4 px-4 py-3">
+      <div className="space-y-4 px-5 py-4">
         {/* Lý do trả về gần nhất */}
         {inProgress && task.last_return_reason && (
-          <div className="border border-red-200 bg-red-50 p-2 text-xs text-red-700">
-            <b>Task bị trả về.</b> Lý do: {task.last_return_reason}
+          <div className="rounded-r-xl border-l-4 border-rose-500 bg-rose-50 p-3 text-xs text-rose-700 shadow-sm">
+            <b className="text-rose-900">Task bị trả về.</b> Lý do: {task.last_return_reason}
           </div>
         )}
 
         {/* Thông tin chung */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+        <div className={`${cardCls} grid grid-cols-2 gap-x-6 gap-y-2 p-4 text-xs`}>
           <Info label="Ngày giao việc" value={fmtDate(task.assigned_date)} />
-          <Info label="Deadline" value={`${fmtDateTime(task.deadline)}${inProgress ? ` (${left.text})` : ''}`}
-            danger={inProgress && left.overdue} />
+          <Info label="Deadline"
+            value={task.deadline
+              ? `${fmtDateTime(task.deadline)}${inProgress && left ? ` (${left.text})` : ''}`
+              : 'Không có — việc thường xuyên, cập nhật mỗi ngày'}
+            danger={inProgress && !!left?.overdue} />
           <Info label="Chủ trì" value={chuTri?.user?.full_name ?? '—'} />
           <Info label="Phối hợp"
-            value={phoiHop.length > 0 ? phoiHop.map((a) => a.user?.full_name).join(', ') : 'Không (Chủ trì tự thực hiện)'} />
+            value={phoiHopNames.length > 0 ? phoiHopNames.join(', ') : 'Không (Chủ trì tự thực hiện)'} />
           {!inProgress && task.completed_at && (
             <>
               <Info label="Hoàn thành lúc" value={fmtDateTime(task.completed_at)} />
@@ -87,11 +95,11 @@ export default function TaskDetail({ task }: { task: Task }) {
         </div>
 
         {/* Tiến độ */}
-        <section>
-          <h3 className="mb-1.5 text-xs font-bold uppercase text-gray-500">Tiến độ</h3>
+        <section className={`${cardCls} p-4`}>
+          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Tiến độ</h3>
           <div className="flex items-center gap-3">
-            <ProgressBar value={task.progress} className="flex-1" />
-            <span className="text-sm font-bold">{task.progress}%</span>
+            <ProgressBar value={task.progress} className="h-3 flex-1" />
+            <span className={`text-sm font-bold ${task.progress >= 100 ? 'text-emerald-600' : 'text-slate-800'}`}>{task.progress}%</span>
             {canUpdateProgress(task, user) && (
               <Select
                 value={task.progress}
@@ -105,14 +113,16 @@ export default function TaskDetail({ task }: { task: Task }) {
             )}
           </div>
           {inProgress && !canUpdateProgress(task, user) && (
-            <p className="mt-1 text-[11px] text-gray-400">Chỉ Chủ trì được cập nhật tiến độ.</p>
+            <p className="mt-1.5 text-[11px] italic text-slate-400">Chỉ Chủ trì được cập nhật tiến độ.</p>
           )}
         </section>
 
         {/* Mô tả */}
-        <section>
-          <h3 className="mb-1.5 text-xs font-bold uppercase text-gray-500">Mô tả công việc</h3>
-          <p className="whitespace-pre-wrap border border-gray-200 p-2 text-sm">{task.description || '—'}</p>
+        <section className={`${cardCls} p-4`}>
+          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Mô tả công việc</h3>
+          <p className="whitespace-pre-wrap rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm font-medium leading-relaxed text-slate-700">
+            {task.description || '—'}
+          </p>
         </section>
 
         <FileSection task={task} />
@@ -173,9 +183,11 @@ export default function TaskDetail({ task }: { task: Task }) {
 
 function Info({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
   return (
-    <p>
-      <span className="text-gray-400">{label}: </span>
-      <span className={danger ? 'font-semibold text-red-600' : 'font-medium'}>{value}</span>
+    <p className="flex items-baseline justify-between gap-3">
+      <span className="shrink-0 text-slate-400">{label}</span>
+      <span className={cn('text-right', danger ? 'font-semibold text-rose-600' : 'font-semibold text-slate-800')}>
+        {value}
+      </span>
     </p>
   )
 }

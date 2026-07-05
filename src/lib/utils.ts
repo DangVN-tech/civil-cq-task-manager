@@ -17,11 +17,14 @@ export function fmtBytes(bytes: number): string {
 }
 
 export function isOverdue(task: Task): boolean {
-  return task.status === 'dang_thuc_hien' && new Date(task.deadline).getTime() < Date.now()
+  // Task không có deadline (công việc thường xuyên) thì không bao giờ quá hạn
+  return task.status === 'dang_thuc_hien' && task.deadline != null
+    && new Date(task.deadline).getTime() < Date.now()
 }
 
-/** Thời gian còn lại đến deadline, dạng "còn 2 ngày 5 giờ" / "Quá hạn 3 giờ" */
-export function timeLeftLabel(deadline: string): { text: string; overdue: boolean } {
+/** Thời gian còn lại đến deadline; null nếu task không có deadline */
+export function timeLeftLabel(deadline: string | null): { text: string; overdue: boolean } | null {
+  if (!deadline) return null
   const mins = differenceInMinutes(new Date(deadline), new Date())
   const abs = Math.abs(mins)
   const d = Math.floor(abs / 1440)
@@ -39,10 +42,12 @@ export function sortInProgress(tasks: Task[]): Task[] {
     if (isOverdue(t)) return 2
     return 3
   }
+  // Không có deadline -> xếp cuối trong nhóm
+  const dl = (t: Task) => (t.deadline ? new Date(t.deadline).getTime() : Infinity)
   return [...tasks].sort((a, b) => {
     const g = group(a) - group(b)
     if (g !== 0) return g
-    return new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+    return dl(a) - dl(b)
   })
 }
 
@@ -55,6 +60,15 @@ export function completedGroupLabel(completedAt: string): string {
 }
 
 export const PRIORITY_ORDER: Record<Priority, number> = { khan: 0, gap: 1, thuong: 2 }
+
+/** Chữ cái viết tắt tên: "Lê Quang Hưng" -> "LH" (chữ đầu của từ đầu và từ cuối) */
+export function initials(fullName: string): string {
+  const words = fullName.trim().split(/\s+/)
+  if (words.length === 0 || !words[0]) return '?'
+  const first = words[0][0] ?? ''
+  const last = words.length > 1 ? words[words.length - 1][0] ?? '' : ''
+  return (first + last).toUpperCase()
+}
 
 /** Thứ tự danh sách nhân sự: Trưởng phòng -> Admin -> Phó phòng -> Nhân viên */
 export function sortUsers(users: User[]): User[] {

@@ -19,6 +19,7 @@ export function useTasks(status: Status) {
         .eq('status', status)
         .order(status === 'hoan_thanh' ? 'completed_at' : 'deadline', {
           ascending: status !== 'hoan_thanh',
+          nullsFirst: false, // task không deadline xếp cuối
         })
       if (error) throw error
       return (data ?? []) as unknown as Task[]
@@ -41,10 +42,13 @@ export interface TaskInput {
   title: string
   description: string
   assigned_date: string
-  deadline: string
+  /** null = công việc thường xuyên, không có hạn */
+  deadline: string | null
   priority: Priority
   /** Danh sách user id theo thứ tự chọn: người đầu tiên là Chủ trì */
   participantIds: string[]
+  /** Phối hợp ngoài phòng (tên tự do) */
+  externalCollabs: string[]
 }
 
 export function useTaskMutations() {
@@ -61,6 +65,7 @@ export function useTaskMutations() {
           assigned_date: input.assigned_date,
           deadline: input.deadline,
           priority: input.priority,
+          external_collabs: input.externalCollabs,
           created_by: createdBy,
         })
         .select('id')
@@ -89,6 +94,7 @@ export function useTaskMutations() {
           assigned_date: input.assigned_date,
           deadline: input.deadline,
           priority: input.priority,
+          external_collabs: input.externalCollabs,
         })
         .eq('id', taskId)
       if (error) throw error
@@ -144,7 +150,7 @@ export function useTaskMutations() {
     mutationFn: async ({ taskId, reason, userId }: { taskId: string; reason: string; userId: string }) => {
       const { error } = await supabase
         .from('tasks')
-        .update({ status: 'dang_thuc_hien', last_return_reason: reason })
+        .update({ status: 'dang_thuc_hien', last_return_reason: reason, progress: 0 })
         .eq('id', taskId)
       if (error) throw error
       const { error: eCmt } = await supabase
