@@ -47,9 +47,10 @@ export function useProjectMutations() {
   }
 
   const addProject = useMutation({
-    mutationFn: async (input: ProjectInput) => {
-      const { error } = await supabase.from('projects').insert(input)
+    mutationFn: async (input: ProjectInput): Promise<string> => {
+      const { data, error } = await supabase.from('projects').insert(input).select('id').single()
       if (error) throw error
+      return data.id as string
     },
     onSuccess: invalidate,
   })
@@ -71,9 +72,14 @@ export function useProjectMutations() {
   })
 
   const addGroup = useMutation({
-    mutationFn: async ({ projectId, name }: { projectId: string; name: string }) => {
-      const { error } = await supabase.from('task_groups').insert({ project_id: projectId, name })
+    mutationFn: async ({ projectId, name }: { projectId: string; name: string }): Promise<string> => {
+      const { data, error } = await supabase
+        .from('task_groups')
+        .insert({ project_id: projectId, name })
+        .select('id')
+        .single()
       if (error) throw error
+      return data.id as string
     },
     onSuccess: invalidate,
   })

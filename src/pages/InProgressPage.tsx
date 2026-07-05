@@ -4,14 +4,15 @@ import TaskCard from '../components/task/TaskCard'
 import TaskDetail from '../components/task/TaskDetail'
 import TaskForm from '../components/task/TaskForm'
 import TaskTree from '../components/task/TaskTree'
+import { EditGroupDialog, EditProjectDialog } from '../components/task/TreeEditDialogs'
 import { Button, Empty, Loading, Select } from '../components/ui'
 import { useCurrentUser } from '../context/AuthContext'
 import { ResizeHandle, useColumnResize } from '../hooks/useColumnResize'
 import { useProjects } from '../hooks/useProjects'
 import { useTasks } from '../hooks/useTasks'
-import { canCreateTask, isParticipant } from '../lib/permissions'
+import { canCreateTask, canManageProjects, isParticipant } from '../lib/permissions'
 import { cn, sortInProgress } from '../lib/utils'
-import { PRIORITY_LABEL, type Priority } from '../types'
+import { PRIORITY_LABEL, type Priority, type Task } from '../types'
 
 type SortBy = 'default' | 'deadline' | 'title'
 type ViewMode = 'list' | 'tree'
@@ -25,6 +26,10 @@ export default function InProgressPage() {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [createGroupId, setCreateGroupId] = useState<string | null>(null)
+  // Sửa Dự án / Đầu mục / task ngay trên cây (chỉ Trưởng phòng)
+  const [editProjectId, setEditProjectId] = useState<string | null>(null)
+  const [editGroupId, setEditGroupId] = useState<string | null>(null)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [myOnly, setMyOnly] = useState(false)
   const [priority, setPriority] = useState<'' | Priority>('')
   const [sortBy, setSortBy] = useState<SortBy>('default')
@@ -81,7 +86,7 @@ export default function InProgressPage() {
           {canCreateTask(user) && (
             <Button variant="primary" className="w-full justify-center rounded-xl"
               onClick={() => { setCreateGroupId(null); setCreateOpen(true) }}>
-              + Tạo task
+              + Tạo Dự án
             </Button>
           )}
 
@@ -121,7 +126,7 @@ export default function InProgressPage() {
               className="py-1 text-xs"
               disabled={!projectId}
             >
-              <option value="">Nhóm: tất cả</option>
+              <option value="">Đầu mục: tất cả</option>
               {groupOptions.map((g) => (
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
@@ -145,7 +150,7 @@ export default function InProgressPage() {
             <Select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} className="w-auto py-1 text-xs">
               <option value="default">Sắp xếp: mặc định</option>
               <option value="deadline">Theo deadline</option>
-              <option value="title">Theo đầu mục</option>
+              <option value="title">Theo tên task</option>
             </Select>
             {filtering && (
               <Button variant="ghost" className="px-2 py-1 text-xs text-rose-600" onClick={clearFilters}>
@@ -166,6 +171,8 @@ export default function InProgressPage() {
               onAddTask={canCreateTask(user)
                 ? (gid) => { setCreateGroupId(gid); setCreateOpen(true) }
                 : undefined}
+              onEditProject={canManageProjects(user) ? setEditProjectId : undefined}
+              onEditGroup={canManageProjects(user) ? setEditGroupId : undefined}
             />
           ) : list.length === 0 ? (
             <Empty label="Không có task nào." />
@@ -194,6 +201,17 @@ export default function InProgressPage() {
         open={createOpen}
         onClose={() => { setCreateOpen(false); setCreateGroupId(null) }}
         initialGroupId={createGroupId}
+      />
+
+      {/* Sửa task mở từ dialog Sửa Đầu mục */}
+      <TaskForm open={!!editingTask} onClose={() => setEditingTask(null)} editing={editingTask} />
+
+      <EditProjectDialog projectId={editProjectId} onClose={() => setEditProjectId(null)} />
+      <EditGroupDialog
+        groupId={editGroupId}
+        onClose={() => setEditGroupId(null)}
+        onEditTask={setEditingTask}
+        onAddTask={(gid) => { setCreateGroupId(gid); setCreateOpen(true) }}
       />
     </div>
   )

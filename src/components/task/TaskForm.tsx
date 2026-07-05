@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
 import { useDropzone } from 'react-dropzone'
 import { useCurrentUser } from '../../context/AuthContext'
-import { useProjects } from '../../hooks/useProjects'
+import { useProjectMutations, useProjects } from '../../hooks/useProjects'
 import { useUsers } from '../../hooks/useUsers'
 import { useTaskMutations, type TaskInput } from '../../hooks/useTasks'
 import { uploadTaskFiles, validateFiles } from '../../lib/files'
@@ -10,8 +10,12 @@ import { cn } from '../../lib/utils'
 import { PRIORITY_LABEL, type Priority, type Project, type Task } from '../../types'
 import { Button, Dialog, Field, Input, Select, Textarea } from '../ui'
 
-/** Form tạo / sửa task — chỉ Trưởng phòng.
- *  initialGroupId: mở form từ nút ➕ trên Cây thư mục -> điền sẵn vị trí đó. */
+const NEW = '__new__' // giá trị đặc biệt: "tạo mới" trong combo
+
+/** Form "Tạo Dự án mới" (tạo chuỗi Dự án -> Đầu mục -> Task trong 1 lần)
+ *  hoặc "Sửa task" khi có editing.
+ *  Combo thông minh: Dự án / Đầu mục vừa chọn có sẵn, vừa gõ tên mới để tạo.
+ *  initialGroupId: mở từ nút ➕ trên cây -> điền sẵn vị trí đó. */
 export default function TaskForm({
   open,
   onClose,
@@ -27,12 +31,19 @@ export default function TaskForm({
   const { data: users } = useUsers()
   const { data: projects } = useProjects()
   const { createTask, updateTask } = useTaskMutations()
+  const { addProject, addGroup } = useProjectMutations()
 
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [assignedDate, setAssignedDate] = useState(format(new Date(), 'yyyy-MM-dd'))
   const [deadline, setDeadline] = useState('')
   const [priority, setPriority] = useState<Priority>('thuong')
+  // Tạo mới: combo Dự án / Đầu mục (id có sẵn hoặc NEW + tên gõ tay)
+  const [projSel, setProjSel] = useState<string>(NEW)
+  const [newProjectName, setNewProjectName] = useState('')
+  const [grpSel, setGrpSel] = useState<string>(NEW)
+  const [newGroupName, setNewGroupName] = useState('')
+  // Sửa task: chọn vị trí bằng cây
   const [groupId, setGroupId] = useState('')
   const [participantIds, setParticipantIds] = useState<string[]>([])
   const [externals, setExternals] = useState<string[]>([])
@@ -61,22 +72,47 @@ export default function TaskForm({
       setParticipantIds([])
       setExternals([])
       setGroupId('')
+      setProjSel(NEW)
+      setNewProjectName('')
+      setGrpSel(NEW)
+      setNewGroupName('')
     }
     setExternalInput('')
     setRefFiles([])
     setError('')
   }, [open, editing])
 
-  // Vị trí mặc định khi tạo mới: nhóm được bấm ➕ trên cây, nếu không thì General
+  // Mở từ nút ➕ trên cây: điền sẵn Dự án + Đầu mục đó
   useEffect(() => {
-    if (!open || editing || groupId || !projects || projects.length === 0) return
-    if (initialGroupId && projects.some((p) => p.groups?.some((g) => g.id === initialGroupId))) {
-      setGroupId(initialGroupId)
-      return
+    if (!open || editing || !initialGroupId || !projects) return
+    for (const p of projects) {
+      const g = p.groups?.find((x) => x.id === initialGroupId)
+      if (g) {
+        setProjSel(p.id)
+        setGrpSel(g.id)
+        return
+      }
     }
-    const general = projects.find((p) => p.name === 'General') ?? projects[0]
-    setGroupId(general.groups?.[0]?.id ?? '')
-  }, [open, editing, groupId, initialGroupId, projects])
+  }, [open, editing, initialGroupId, projects])
+
+  // Dự án chọn được trong combo: bỏ dự án Lưu trữ
+  const selectableProjects = useMemo(
+    () => (projects ?? []).filter((p) => p.status !== 'luu_tru'),
+    [projects],
+  )
+  const groupsOfSelected = useMemo(
+    () => (projects ?? []).find((p) => p.id === projSel)?.groups ?? [],
+    [projects, projSel],
+  )
+
+  const pickProject = (v: string) => {
+    setProjSel(v)
+    if (v === NEW) setGrpSel(NEW)
+    else {
+      const p = (projects ?? []).find((x) => x.id === v)
+      setGrpSel(p?.groups?.[0]?.id ?? NEW)
+    }
+  }
 
   // Admin hệ thống không tham gia thực hiện task
   const available = useMemo(
@@ -98,28 +134,59 @@ export default function TaskForm({
     setExternalInput('')
   }
 
+  /** Tạo mới: tìm/tạo Dự án -> tìm/tạo Đầu mục -> trả về groupId đích.
+   *  Gõ tên trùng với cái đã có (không phân biệt hoa thường) thì dùng lại, không tạo trùng. */
+  const resolveGroupId = async (): Promise<string> => {
+    let projectId = projSel
+    if (projSel === NEW) {
+      const name = newProjectName.trim()
+      const existed = (projects ?? []).find((p) => p.name.toLowerCase() === name.toLowerCase())
+      projectId = existed
+        ? existed.id
+        : await addProject.mutateAsync({ name, description: '', status: 'dang_thuc_hien' })
+      if (existed && grpSel !== NEW) setGrpSel(NEW) // dự án gõ trùng: đầu mục xử lý theo tên
+      if (existed) {
+        const g = existed.groups?.find((x) => x.name.toLowerCase() === newGroupName.trim().toLowerCase())
+        if (g && grpSel === NEW) return g.id
+      }
+    }
+    if (grpSel !== NEW && projSel !== NEW) return grpSel
+    const gname = newGroupName.trim()
+    const proj = (projects ?? []).find((p) => p.id === projectId)
+    const existedG = proj?.groups?.find((x) => x.name.toLowerCase() === gname.toLowerCase())
+    if (existedG) return existedG.id
+    return addGroup.mutateAsync({ projectId, name: gname })
+  }
+
   const submit = async () => {
     setError('')
-    if (!title.trim()) return setError('Chưa nhập đầu mục công việc.')
-    if (!groupId) return setError('Chưa chọn vị trí trong cây dự án (tạo nhóm trong "Quản lý dự án" nếu dự án chưa có nhóm).')
+    if (!editing) {
+      if (projSel === NEW && !newProjectName.trim()) return setError('Chưa nhập Tên Dự án.')
+      if ((grpSel === NEW || projSel === NEW) && grpSel === NEW && !newGroupName.trim())
+        return setError('Chưa nhập Đầu mục công việc.')
+    } else if (!groupId) {
+      return setError('Chưa chọn vị trí trong cây dự án.')
+    }
+    if (!title.trim()) return setError('Chưa nhập Task phải làm.')
     if (participantIds.length === 0) return setError('Bắt buộc chọn Chủ trì.')
     if (refFiles.length > 0) {
       const err = validateFiles(refFiles)
       if (err) return setError(err)
     }
-    const input: TaskInput = {
-      title: title.trim(),
-      description,
-      assigned_date: assignedDate,
-      // Không chọn deadline = công việc thường xuyên, không có hạn hoàn thành
-      deadline: deadline ? new Date(deadline).toISOString() : null,
-      priority,
-      participantIds,
-      externalCollabs: externals,
-      groupId,
-    }
     setBusy(true)
     try {
+      const targetGroupId = editing ? groupId : await resolveGroupId()
+      const input: TaskInput = {
+        title: title.trim(),
+        description,
+        assigned_date: assignedDate,
+        // Không chọn deadline = công việc thường xuyên, không có hạn hoàn thành
+        deadline: deadline ? new Date(deadline).toISOString() : null,
+        priority,
+        participantIds,
+        externalCollabs: externals,
+        groupId: targetGroupId,
+      }
       if (editing) {
         await updateTask.mutateAsync({ taskId: editing.id, input })
       } else {
@@ -135,10 +202,56 @@ export default function TaskForm({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title={editing ? 'Sửa task' : 'Tạo task mới'} width="max-w-2xl">
+    <Dialog open={open} onClose={onClose} title={editing ? 'Sửa task' : 'Tạo Dự án mới'} width="max-w-2xl">
       <div className="space-y-3">
-        <Field label="Đầu mục công việc" required>
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ví dụ: FEED" autoFocus />
+        {/* ===== Cấu trúc: Dự án -> Đầu mục -> Task ===== */}
+        {!editing ? (
+          <>
+            <Field label="Tên Dự án" required>
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={projSel} onChange={(e) => pickProject(e.target.value)}>
+                  <option value={NEW}>➕ Dự án mới...</option>
+                  {selectableProjects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </Select>
+                {projSel === NEW && (
+                  <Input
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                    placeholder="Gõ tên dự án mới, ví dụ: DỰ ÁN MỚI"
+                  />
+                )}
+              </div>
+            </Field>
+
+            <Field label="Đầu mục công việc" required>
+              <div className="grid grid-cols-2 gap-2">
+                <Select value={grpSel} onChange={(e) => setGrpSel(e.target.value)} disabled={projSel === NEW}>
+                  <option value={NEW}>➕ Đầu mục mới...</option>
+                  {projSel !== NEW && groupsOfSelected.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </Select>
+                {grpSel === NEW && (
+                  <Input
+                    value={newGroupName}
+                    onChange={(e) => setNewGroupName(e.target.value)}
+                    placeholder="Gõ tên đầu mục, ví dụ: Quảng Ninh"
+                  />
+                )}
+              </div>
+            </Field>
+          </>
+        ) : (
+          <Field label="Vị trí trong cây dự án" required>
+            <GroupPicker projects={projects ?? []} groupId={groupId} onPick={setGroupId} />
+          </Field>
+        )}
+
+        <Field label="Task phải làm" required>
+          <Input value={title} onChange={(e) => setTitle(e.target.value)}
+            placeholder="Ví dụ: Gói TV lập HSMT và Dự toán EPC" autoFocus={!editing} />
         </Field>
         <Field label="Mô tả công việc">
           <Textarea
@@ -146,11 +259,6 @@ export default function TaskForm({
             onChange={(e) => setDescription(e.target.value)}
             placeholder={'1. Làm báo cáo\n2. Làm báo giá\n3. Phạm vi công việc'}
           />
-        </Field>
-
-        {/* WBS: chọn vị trí bằng cây thư mục Dự án -> Nhóm */}
-        <Field label="Vị trí trong cây dự án" required>
-          <GroupPicker projects={projects ?? []} groupId={groupId} onPick={setGroupId} />
         </Field>
 
         <div className="grid grid-cols-3 gap-3">
@@ -277,7 +385,7 @@ export default function TaskForm({
         <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
           <Button onClick={onClose}>Hủy</Button>
           <Button variant="primary" onClick={submit} disabled={busy}>
-            {busy ? 'Đang lưu...' : editing ? 'Lưu thay đổi' : 'Tạo task'}
+            {busy ? 'Đang lưu...' : editing ? 'Lưu thay đổi' : 'Tạo'}
           </Button>
         </div>
       </div>
@@ -285,7 +393,7 @@ export default function TaskForm({
   )
 }
 
-/** Cây chọn vị trí: ▼ Dự án -> 📁 Nhóm công việc. Bấm nhóm để chọn. */
+/** Cây chọn vị trí (dùng khi Sửa task): ▼ Dự án -> 📁 Đầu mục. Bấm đầu mục để chọn. */
 function GroupPicker({
   projects,
   groupId,
@@ -327,7 +435,7 @@ function GroupPicker({
         className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
       >
         <span className={cn('min-w-0 truncate', currentPath ? 'font-semibold text-slate-800' : 'text-slate-400')}>
-          🗂 {currentPath || 'Bấm để chọn Dự án › Nhóm công việc...'}
+          🗂 {currentPath || 'Bấm để chọn Dự án › Đầu mục...'}
         </span>
         <span className="shrink-0 text-xs text-slate-400">{expanded ? '▲ thu gọn' : '▼ chọn vị trí'}</span>
       </button>
@@ -350,25 +458,27 @@ function GroupPicker({
                   <span className="min-w-0 flex-1 truncate">{p.name}</span>
                 </button>
                 {pOpen && (
-                  <div className="ml-5">
+                  <div className="ml-[13px] border-l-2 border-slate-200">
                     {(p.groups ?? []).length === 0 && (
-                      <p className="px-2 py-1 text-[11px] italic text-slate-400">(chưa có nhóm công việc)</p>
+                      <p className="px-4 py-1 text-[11px] italic text-slate-400">(chưa có đầu mục)</p>
                     )}
                     {(p.groups ?? []).map((g) => (
-                      <button
-                        key={g.id}
-                        type="button"
-                        onClick={() => { onPick(g.id); setExpanded(false) }}
-                        className={cn(
-                          'flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors',
-                          g.id === groupId
-                            ? 'bg-brand-50 font-semibold text-brand-700'
-                            : 'text-slate-700 hover:bg-slate-50',
-                        )}
-                      >
-                        📁 <span className="min-w-0 flex-1 truncate">{g.name}</span>
-                        {g.id === groupId && <span className="shrink-0 text-brand-500">✓</span>}
-                      </button>
+                      <div key={g.id} className="flex items-center">
+                        <span className="h-px w-3 shrink-0 bg-slate-200" />
+                        <button
+                          type="button"
+                          onClick={() => { onPick(g.id); setExpanded(false) }}
+                          className={cn(
+                            'flex min-w-0 flex-1 items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors',
+                            g.id === groupId
+                              ? 'bg-brand-50 font-semibold text-brand-700'
+                              : 'text-slate-700 hover:bg-slate-50',
+                          )}
+                        >
+                          📁 <span className="min-w-0 flex-1 truncate">{g.name}</span>
+                          {g.id === groupId && <span className="shrink-0 text-brand-500">✓</span>}
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}

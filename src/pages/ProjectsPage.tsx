@@ -51,7 +51,7 @@ export default function ProjectsPage() {
       ))}
 
       <p className="text-xs text-slate-400">
-        Không thể xóa nhóm/dự án khi bên trong vẫn còn task — hãy chuyển task sang nhóm khác
+        Không thể xóa đầu mục/dự án khi bên trong vẫn còn task — hãy chuyển task sang đầu mục khác
         (nút "Sửa task") hoặc xóa task trước. Dự án "Lưu trữ" sẽ không hiện khi tạo task mới.
       </p>
 
@@ -77,8 +77,8 @@ export default function ProjectsPage() {
 
       <ConfirmDialog
         open={!!deletingGroup} onClose={() => setDeletingGroup(null)}
-        title="Xóa nhóm công việc" danger confirmLabel="Xóa"
-        message={<>Xóa nhóm <b>{deletingGroup?.name}</b>?</>}
+        title="Xóa đầu mục" danger confirmLabel="Xóa"
+        message={<>Xóa đầu mục <b>{deletingGroup?.name}</b>?</>}
         onConfirm={() => {
           setError('')
           if (deletingGroup) deleteGroup.mutate(deletingGroup.id, { onError: (e) => setError(e.message) })
@@ -141,7 +141,7 @@ function ProjectCard({
 
       <div className="space-y-1.5 p-4">
         <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-          Nhóm công việc ({groups.length})
+          Đầu mục công việc ({groups.length})
         </h4>
         {groups.map((g) => (
           <div key={g.id} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-1.5">
@@ -157,10 +157,10 @@ function ProjectCard({
             value={newGroup}
             onChange={(e) => setNewGroup(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
-            placeholder="Tên nhóm công việc mới, ví dụ: Thiết kế kỹ thuật"
+            placeholder="Tên đầu mục mới, ví dụ: Quảng Ninh"
             className="text-xs"
           />
-          <Button onClick={add} disabled={!newGroup.trim()}>+ Thêm nhóm</Button>
+          <Button onClick={add} disabled={!newGroup.trim()}>+ Thêm đầu mục</Button>
         </div>
       </div>
     </div>
@@ -249,7 +249,7 @@ function RenameGroupDialog({
   }
 
   return (
-    <Dialog open={!!group} onClose={onClose} title="Đổi tên nhóm công việc" width="max-w-sm">
+    <Dialog open={!!group} onClose={onClose} title="Đổi tên đầu mục" width="max-w-sm">
       <div className="space-y-3">
         <Input autoFocus value={name} onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && name.trim() && group) { onSubmit(group.id, name.trim()); onClose() } }} />

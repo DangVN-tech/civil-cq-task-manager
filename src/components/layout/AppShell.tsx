@@ -57,7 +57,7 @@ export default function AppShell() {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="🔍 Tìm kiếm: đầu mục, mô tả, tên file, người tham gia..."
+            placeholder="🔍 Tìm kiếm: task, đầu mục, dự án, tên file, người tham gia..."
             className="rounded-xl bg-slate-50"
           />
         </form>

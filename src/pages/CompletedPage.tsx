@@ -47,7 +47,7 @@ export default function CompletedPage() {
           <Select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} className="w-auto py-1 text-xs">
             <option value="date">Theo ngày hoàn thành</option>
             <option value="deadline">Theo deadline</option>
-            <option value="title">Theo đầu mục</option>
+            <option value="title">Theo tên task</option>
           </Select>
           <Select value={priority} onChange={(e) => setPriority(e.target.value as '' | Priority)} className="w-auto py-1 text-xs">
             <option value="">Ưu tiên: tất cả</option>
