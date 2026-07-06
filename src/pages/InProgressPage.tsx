@@ -64,6 +64,18 @@ export default function InProgressPage() {
   const selected = (tasks ?? []).find((t) => t.id === selectedId) ?? null
   const { width, startDrag } = useColumnResize('ccq-w-list', 400, 300, 640)
 
+  // Bộ khung cây: hiện cả dự án/đầu mục rỗng khi KHÔNG lọc theo task (của tôi / ưu tiên).
+  // Tôn trọng bộ lọc Dự án/Đầu mục để không phình khi đang lọc.
+  const skeleton = useMemo(() => {
+    if (myOnly || priority !== '') return undefined
+    let ps = (projects ?? []).filter((p) => p.status !== 'luu_tru' || p.id === projectId)
+    if (projectId) ps = ps.filter((p) => p.id === projectId)
+    return ps.map((p) => ({
+      ...p,
+      groups: (p.groups ?? []).filter((g) => !groupId || g.id === groupId),
+    }))
+  }, [projects, projectId, groupId, myOnly, priority])
+
   const selectTask = (id: string) => {
     const next = new URLSearchParams(params)
     next.set('task', id)
@@ -173,6 +185,7 @@ export default function InProgressPage() {
                 : undefined}
               onEditProject={canManageProjects(user) ? setEditProjectId : undefined}
               onEditGroup={canManageProjects(user) ? setEditGroupId : undefined}
+              skeleton={skeleton}
             />
           ) : list.length === 0 ? (
             <Empty label="Không có task nào." />

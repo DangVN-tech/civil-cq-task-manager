@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { cn, fmtDateTime, timeLeftLabel } from '../../lib/utils'
-import type { Priority, Task } from '../../types'
+import type { Priority, Project, Task } from '../../types'
 import MarkDot from './MarkDot'
 
 /* Chấm màu ưu tiên trong cây: 🔴 Khẩn, 🟠 Gấp, ⚪ Thường */
@@ -26,6 +26,7 @@ export default function TaskTree({
   onAddTask,
   onEditProject,
   onEditGroup,
+  skeleton,
 }: {
   tasks: Task[]
   selectedId: string | null
@@ -33,6 +34,8 @@ export default function TaskTree({
   onAddTask?: (groupId: string) => void
   onEditProject?: (projectId: string) => void
   onEditGroup?: (groupId: string) => void
+  /** Bộ khung dự án/đầu mục đầy đủ: nếu có, hiện cả dự án/đầu mục chưa có task nào */
+  skeleton?: Project[]
 }) {
   // Nút nào đang thu gọn (mặc định: tất cả mở rộng)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -47,6 +50,14 @@ export default function TaskTree({
 
   const treeData = useMemo<ProjectNode[]>(() => {
     const projMap = new Map<string, ProjectNode>()
+    // Gieo trước bộ khung đầy đủ (nếu có) để dự án/đầu mục rỗng vẫn hiện
+    if (skeleton) {
+      for (const p of skeleton) {
+        const node: ProjectNode = { id: p.id, name: p.name, groups: [] }
+        for (const g of p.groups ?? []) node.groups.push({ id: g.id, name: g.name, tasks: [] })
+        projMap.set(p.id, node)
+      }
+    }
     for (const t of tasks) {
       const pId = t.group?.project?.id ?? '_none'
       const pName = t.group?.project?.name ?? 'Chưa phân loại'
@@ -64,7 +75,7 @@ export default function TaskTree({
     const arr = Array.from(projMap.values())
     for (const p of arr) p.groups.sort((a, b) => a.name.localeCompare(b.name, 'vi'))
     return arr.sort((a, b) => a.name.localeCompare(b.name, 'vi'))
-  }, [tasks])
+  }, [tasks, skeleton])
 
   if (treeData.length === 0) {
     return <div className="p-8 text-center text-sm text-slate-400">Không có task nào.</div>
