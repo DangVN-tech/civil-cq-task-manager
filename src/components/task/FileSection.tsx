@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useQueryClient } from '@tanstack/react-query'
-import { Download, UploadCloud } from 'lucide-react'
+import { Download, Paperclip, UploadCloud } from 'lucide-react'
 import { useCurrentUser } from '../../context/AuthContext'
 import { downloadAllFiles, downloadFile, uploadTaskFiles, validateFiles } from '../../lib/files'
 import { canUploadFile } from '../../lib/permissions'
@@ -43,7 +43,9 @@ export default function FileSection({ task }: { task: Task }) {
   return (
     <section className={`${cardCls} p-4`}>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">File đính kèm ({files.length})</h3>
+        <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+          <Paperclip size={14} className="text-brand-500" /> Tài liệu đính kèm ({files.length})
+        </h3>
         {files.length > 1 && (
           <Button
             variant="ghost" className="px-2 py-0.5 text-xs"

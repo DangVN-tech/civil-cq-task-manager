@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MessagesSquare } from 'lucide-react'
 import { useCurrentUser } from '../../context/AuthContext'
 import { useAddComment, useComments } from '../../hooks/useTaskDetail'
 import { canComment } from '../../lib/permissions'
@@ -28,8 +29,8 @@ export default function CommentSection({ task }: { task: Task }) {
 
   return (
     <section className={`${cardCls} p-4`}>
-      <h3 className="mb-3 border-b border-slate-50 pb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-        Nhật ký xử lý công việc ({items.length})
+      <h3 className="mb-3 flex items-center gap-2 border-b border-slate-50 pb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+        <MessagesSquare size={14} className="text-brand-500" /> Nhật ký xử lý công việc ({items.length})
       </h3>
       {canComment(task, user) && (
         <div className="mb-3 flex gap-2">

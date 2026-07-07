@@ -5,8 +5,8 @@ import {
   canComplete, canDeleteTask, canEditTask, canReopenCompleted,
   canReturnTask, canUpdateProgress,
 } from '../../lib/permissions'
-import { ChevronRight, Pencil, Trash2 } from 'lucide-react'
-import { cn, fmtDate, fmtDateTime, timeLeftLabel } from '../../lib/utils'
+import { AlignLeft, ChevronRight, Info as InfoIcon, Pencil, Trash2, TrendingUp } from 'lucide-react'
+import { cn, fmtDate, fmtDateTime, initials, timeLeftLabel } from '../../lib/utils'
 import type { Task } from '../../types'
 import { Button, cardCls, ConfirmDialog, Dialog, ProgressSlider, Textarea } from '../ui'
 import ActivityLogView from './ActivityLogView'
@@ -16,7 +16,7 @@ import MarkDot from './MarkDot'
 import PriorityBadge from './PriorityBadge'
 import TaskForm from './TaskForm'
 
-/** Khung chi tiết task (cột phải). */
+/** Khung chi tiết task (cột phải): bố cục 2 cột theo mockup — trái nội dung chính, phải thuộc tính/tiến độ. */
 export default function TaskDetail({ task }: { task: Task }) {
   const user = useCurrentUser()
   const { setProgress, completeTask, returnTask, reopenTask, deleteTask } = useTaskMutations()
@@ -32,6 +32,7 @@ export default function TaskDetail({ task }: { task: Task }) {
   const phoiHop = task.assignees.filter((a) => a.assign_role === 'phoi_hop')
   const inProgress = task.status === 'dang_thuc_hien'
   const left = timeLeftLabel(task.deadline) // null = không có deadline
+  const overdue = inProgress && !!left?.overdue
   // Phối hợp = thành viên phòng + người ngoài phòng (nhập tự do)
   const phoiHopNames = [
     ...phoiHop.map((a) => a.user?.full_name ?? ''),
@@ -78,75 +79,122 @@ export default function TaskDetail({ task }: { task: Task }) {
         </div>
       </div>
 
-      <div className="space-y-4 px-5 py-4">
+      <div className="px-5 py-4">
         {/* Lý do trả về gần nhất */}
         {inProgress && task.last_return_reason && (
-          <div className="rounded-r-xl border-l-4 border-rose-500 bg-rose-50 p-3 text-xs text-rose-700 shadow-sm">
+          <div className="mb-4 rounded-r-xl border-l-4 border-rose-500 bg-rose-50 p-3 text-xs text-rose-700 shadow-sm">
             <b className="text-rose-900">Task bị trả về.</b> Lý do: {task.last_return_reason}
           </div>
         )}
 
-        {/* Thông tin chung */}
-        <div className={`${cardCls} grid grid-cols-2 gap-x-6 gap-y-2 p-4 text-xs`}>
-          <Info label="Ngày giao việc" value={fmtDate(task.assigned_date)} />
-          <Info label="Deadline"
-            value={task.deadline
-              ? `${fmtDateTime(task.deadline)}${inProgress && left ? ` (${left.text})` : ''}`
-              : 'Không có — việc thường xuyên, cập nhật mỗi ngày'}
-            danger={inProgress && !!left?.overdue} />
-          <Info label="Chủ trì" value={chuTri?.user?.full_name ?? '—'} />
-          <Info label="Phối hợp"
-            value={phoiHopNames.length > 0 ? phoiHopNames.join(', ') : 'Không (Chủ trì tự thực hiện)'} />
-          {!inProgress && task.completed_at && (
-            <>
-              <Info label="Hoàn thành lúc" value={fmtDateTime(task.completed_at)} />
-              <Info label="Người hoàn thành" value={task.completer?.full_name ?? chuTri?.user?.full_name ?? '—'} />
-            </>
-          )}
-        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {/* ===== Cột trái (rộng): nội dung xử lý công việc ===== */}
+          <div className="space-y-4 lg:col-span-2">
+            {/* Mô tả */}
+            <section className={`${cardCls} p-4`}>
+              <h3 className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                <AlignLeft size={14} className="text-brand-500" /> Mô tả công việc
+              </h3>
+              <p className="whitespace-pre-wrap rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm font-medium leading-relaxed text-slate-700">
+                {task.description || '—'}
+              </p>
+            </section>
 
-        {/* Tiến độ */}
-        <section className={`${cardCls} p-4`}>
-          <div className="mb-2.5 flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Tiến độ hiện tại</h3>
-            <span className={cn(
-              'rounded-full px-2 py-0.5 text-sm font-extrabold',
-              task.progress >= 100 ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-50 text-brand-600',
-            )}>
-              {task.progress}%
-            </span>
+            <CommentSection task={task} />
+            <ActivityLogView taskId={task.id} />
           </div>
-          {canUpdateProgress(task, user) ? (
-            <ProgressSlider
-              value={task.progress}
-              onChange={(v) => setProgress.mutate({ taskId: task.id, progress: v })}
-            />
-          ) : (
-            <>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className={cn('h-full rounded-full', task.progress >= 100 ? 'bg-emerald-500' : 'bg-brand-500')}
-                  style={{ width: `${task.progress}%` }}
-                />
+
+          {/* ===== Cột phải (hẹp): tiến độ + thông tin quản lý + file ===== */}
+          <div className="space-y-4">
+            {/* Tiến độ */}
+            <section className={`${cardCls} p-4`}>
+              <div className="mb-2.5 flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <TrendingUp size={14} className="text-brand-500" /> Tiến độ hiện tại
+                </h3>
+                <span className={cn(
+                  'rounded-full px-2 py-0.5 text-sm font-extrabold',
+                  task.progress >= 100 ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-50 text-brand-600',
+                )}>
+                  {task.progress}%
+                </span>
               </div>
-              {inProgress && (
-                <p className="mt-1.5 text-[11px] italic text-slate-400">Chỉ Chủ trì được cập nhật tiến độ.</p>
+              {canUpdateProgress(task, user) ? (
+                <ProgressSlider
+                  value={task.progress}
+                  onChange={(v) => setProgress.mutate({ taskId: task.id, progress: v })}
+                />
+              ) : (
+                <>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={cn('h-full rounded-full', task.progress >= 100 ? 'bg-emerald-500' : 'bg-brand-500')}
+                      style={{ width: `${task.progress}%` }}
+                    />
+                  </div>
+                  {inProgress && (
+                    <p className="mt-1.5 text-[11px] italic text-slate-400">Chỉ Chủ trì được cập nhật tiến độ.</p>
+                  )}
+                </>
               )}
-            </>
-          )}
-        </section>
+            </section>
 
-        {/* Mô tả */}
-        <section className={`${cardCls} p-4`}>
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Mô tả công việc</h3>
-          <p className="whitespace-pre-wrap rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm font-medium leading-relaxed text-slate-700">
-            {task.description || '—'}
-          </p>
-        </section>
+            {/* Thông tin quản lý */}
+            <section className={`${cardCls} p-4`}>
+              <h3 className="mb-3 flex items-center gap-2 border-b border-slate-100 pb-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                <InfoIcon size={14} className="text-brand-500" /> Thông tin quản lý
+              </h3>
+              <div className="space-y-3 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="shrink-0 font-semibold text-slate-400">Chủ trì:</span>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[9px] font-bold text-brand-700">
+                      {chuTri?.user ? initials(chuTri.user.full_name) : '?'}
+                    </div>
+                    <span className="truncate font-bold text-slate-700">{chuTri?.user?.full_name ?? '—'}</span>
+                  </div>
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <span className="shrink-0 font-semibold text-slate-400">Phối hợp:</span>
+                  <span className="truncate rounded border border-slate-100 bg-slate-50 px-2 py-0.5 text-right text-[11px] italic text-slate-500">
+                    {phoiHopNames.length > 0 ? phoiHopNames.join(', ') : 'Không (Chủ trì tự thực hiện)'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-400">Ngày giao:</span>
+                  <span className="rounded-md border border-slate-100 bg-slate-50 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">
+                    {fmtDate(task.assigned_date)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="shrink-0 font-semibold text-slate-400">Hạn chót:</span>
+                  <span className={cn(
+                    'truncate rounded-md border px-2.5 py-0.5 text-right text-[11px] font-bold',
+                    overdue ? 'border-rose-100 bg-rose-50 text-rose-600' : 'border-amber-100 bg-amber-50 text-amber-600',
+                  )}>
+                    {task.deadline
+                      ? `${fmtDateTime(task.deadline)}${inProgress && left ? ` (${left.text})` : ''}`
+                      : 'Không có — việc thường xuyên'}
+                  </span>
+                </div>
+                {!inProgress && task.completed_at && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-400">Hoàn thành lúc:</span>
+                      <span className="font-bold text-slate-700">{fmtDateTime(task.completed_at)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-slate-400">Người hoàn thành:</span>
+                      <span className="font-bold text-slate-700">{task.completer?.full_name ?? chuTri?.user?.full_name ?? '—'}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </section>
 
-        <FileSection task={task} />
-        <CommentSection task={task} />
-        <ActivityLogView taskId={task.id} />
+            <FileSection task={task} />
+          </div>
+        </div>
       </div>
 
       {/* ===== Dialogs ===== */}
@@ -197,16 +245,5 @@ export default function TaskDetail({ task }: { task: Task }) {
         </div>
       </Dialog>
     </div>
-  )
-}
-
-function Info({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
-  return (
-    <p className="flex items-baseline justify-between gap-3">
-      <span className="shrink-0 text-slate-400">{label}</span>
-      <span className={cn('text-right', danger ? 'font-semibold text-rose-600' : 'font-semibold text-slate-800')}>
-        {value}
-      </span>
-    </p>
   )
 }

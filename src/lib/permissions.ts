@@ -24,8 +24,8 @@ export const canManageStorage = (u: User) => isTruongPhong(u) || isAdmin(u)
  *  Admin dùng chung PIN với Trưởng phòng (cơ chế chéo): Trưởng phòng chia sẻ PIN = cho phép vào. */
 export const canChangeOwnPin = isTruongPhong
 
-export const canViewDashboard = (u: User) =>
-  isTruongPhong(u) || u.role === 'pho_phong' || isAdmin(u)
+/** Dashboard toàn phòng — mọi vai trò đều xem được (kể cả Nhân viên). */
+export const canViewDashboard = (_u: User) => true
 
 export function isParticipant(task: Task, u: User): boolean {
   return task.assignees.some((a) => a.user_id === u.id)

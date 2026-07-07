@@ -15,7 +15,7 @@ import { canManageStorage } from '../lib/permissions'
 import { cn, fmtBytes, isOverdue } from '../lib/utils'
 import { displayRole, PROJECT_STATUS_LABEL, STORAGE_QUOTA } from '../types'
 
-/** Dashboard toàn phòng — Trưởng phòng, Phó phòng & Admin. */
+/** Dashboard toàn phòng — mọi vai trò đều xem được. */
 export default function DashboardPage() {
   const user = useCurrentUser()
   const navigate = useNavigate()

@@ -115,11 +115,11 @@ export default function AppShell() {
               {collapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
             </button>
             <div className="space-y-1.5">
-              <NavItem to="/dang-thuc-hien" icon={Loader2} iconColor="text-amber-500" collapsed={collapsed}>Đang thực hiện</NavItem>
-              <NavItem to="/hoan-thanh" icon={CheckCircle2} iconColor="text-emerald-500" collapsed={collapsed}>Hoàn thành</NavItem>
               {canViewDashboard(user) && (
                 <NavItem to="/dashboard" icon={PieChart} iconColor="text-brand-500" collapsed={collapsed}>Dashboard</NavItem>
               )}
+              <NavItem to="/dang-thuc-hien" icon={Loader2} iconColor="text-amber-500" collapsed={collapsed}>Đang thực hiện</NavItem>
+              <NavItem to="/hoan-thanh" icon={CheckCircle2} iconColor="text-emerald-500" collapsed={collapsed}>Hoàn thành</NavItem>
               {canManageProjects(user) && (
                 <NavItem to="/du-an" icon={FolderTree} iconColor="text-blue-500" collapsed={collapsed}>Quản lý dự án</NavItem>
               )}
