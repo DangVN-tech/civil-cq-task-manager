@@ -36,8 +36,30 @@ export interface ProjectInput {
   status: ProjectStatus
 }
 
-/** Lỗi FK khi xóa nhóm/dự án còn task (on delete restrict) */
-const FK_MSG = 'Không thể xóa: vẫn còn task bên trong. Hãy chuyển hoặc xóa hết task trước.'
+/** Xóa toàn bộ file trên Storage của danh sách task (chia lô 100 file/lần). */
+async function removeTaskFiles(taskIds: string[]): Promise<void> {
+  if (taskIds.length === 0) return
+  const { data: files, error } = await supabase.from('files').select('storage_path').in('task_id', taskIds)
+  if (error) throw error
+  const paths = (files ?? []).map((f) => f.storage_path)
+  for (let i = 0; i < paths.length; i += 100) {
+    const { error: eRemove } = await supabase.storage.from('task-files').remove(paths.slice(i, i + 100))
+    if (eRemove) throw eRemove
+  }
+}
+
+/** Xóa toàn bộ task thuộc các đầu mục cho trước (kể cả đã hoàn thành).
+ *  Cascade DB tự dọn assignees/marks/files-row/comments/activity/notifications. */
+async function deleteTasksInGroups(groupIds: string[]): Promise<void> {
+  if (groupIds.length === 0) return
+  const { data: tasksRows, error } = await supabase.from('tasks').select('id').in('group_id', groupIds)
+  if (error) throw error
+  const taskIds = (tasksRows ?? []).map((t) => t.id as string)
+  if (taskIds.length === 0) return
+  await removeTaskFiles(taskIds)
+  const { error: eDel } = await supabase.from('tasks').delete().in('id', taskIds)
+  if (eDel) throw eDel
+}
 
 export function useProjectMutations() {
   const qc = useQueryClient()
@@ -63,10 +85,17 @@ export function useProjectMutations() {
     onSuccess: invalidate,
   })
 
+  /** Xóa mạnh tay: xóa toàn bộ đầu mục + task bên trong (kể cả đã hoàn thành) rồi mới xóa dự án. */
   const deleteProject = useMutation({
     mutationFn: async (id: string) => {
+      const { data: groups, error: eGroups } = await supabase
+        .from('task_groups')
+        .select('id')
+        .eq('project_id', id)
+      if (eGroups) throw eGroups
+      await deleteTasksInGroups((groups ?? []).map((g) => g.id as string))
       const { error } = await supabase.from('projects').delete().eq('id', id)
-      if (error) throw new Error(error.code === '23503' ? FK_MSG : error.message)
+      if (error) throw error
     },
     onSuccess: invalidate,
   })
@@ -92,10 +121,12 @@ export function useProjectMutations() {
     onSuccess: invalidate,
   })
 
+  /** Xóa mạnh tay: xóa toàn bộ task bên trong đầu mục (kể cả đã hoàn thành) rồi mới xóa đầu mục. */
   const deleteGroup = useMutation({
     mutationFn: async (id: string) => {
+      await deleteTasksInGroups([id])
       const { error } = await supabase.from('task_groups').delete().eq('id', id)
-      if (error) throw new Error(error.code === '23503' ? FK_MSG : error.message)
+      if (error) throw error
     },
     onSuccess: invalidate,
   })

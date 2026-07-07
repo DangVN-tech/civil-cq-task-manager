@@ -16,7 +16,7 @@ thông báo hiện góc phải dưới màn hình.
 | Đăng nhập | Chỉ nhập ID (ví dụ `nguyenvana`). Riêng Trưởng phòng thêm PIN 4 số, mặc định `0000`, bắt buộc đổi lần đầu |
 | Task | Đầu mục, mô tả, ngày giao, deadline, ưu tiên (Khẩn/Gấp/Thường), Chủ trì + Phối hợp, tiến độ %, file, comment, activity log |
 | Workflow | Tạo → thông báo → Chủ trì cập nhật tiến độ → xác nhận hoàn thành → tab Hoàn thành. Trưởng phòng có nút **Trả về** (bắt buộc lý do) |
-| Thông báo | Realtime kiểu Outlook, góc phải dưới, xếp chồng, nút "Nhắc tôi sau" (mặc định 15 phút) — khi giao task, trước deadline 24h/8h/2h, khi đổi deadline |
+| Thông báo | Realtime kiểu Outlook, góc phải dưới, xếp chồng, nút "Nhắc tôi sau" (mặc định 15 phút) — khi giao task, trước deadline 24h/8h/2h, khi đổi deadline. Bấm **"🔔 Bật thông báo màn hình"** để nhận thông báo hệ điều hành cả khi tab đang chạy nền/thu nhỏ (không cần Safari trên iPhone/iPad — chỉ hỗ trợ nếu cài như PWA) |
 | File | Tối đa 6 file/lần, 50 MB/file, kéo thả, Download All (zip). Cho phép: pdf, doc(x), xls(x), ppt(x), zip, rar. Chặn: exe, bat, msi |
 | Quản trị | Dashboard toàn phòng, quản lý nhân sự, quản lý dung lượng kho (cảnh báo 80%, nút Xóa file này) |
 

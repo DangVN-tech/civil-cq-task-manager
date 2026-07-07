@@ -13,6 +13,7 @@ export function EditProjectDialog({
   onClose: () => void
 }) {
   const { data: projects } = useProjects()
+  const { data: allTasks } = useAllTasks()
   const { updateProject, addGroup, renameGroup, deleteGroup } = useProjectMutations()
   const project = (projects ?? []).find((p) => p.id === projectId) ?? null
 
@@ -119,7 +120,13 @@ export function EditProjectDialog({
       <ConfirmDialog
         open={!!deletingGroupId} onClose={() => setDeletingGroupId(null)}
         title="Xóa đầu mục" danger confirmLabel="Xóa"
-        message={<>Xóa đầu mục <b>{deletingGroup?.name}</b>? (Còn task bên trong thì hệ thống sẽ từ chối.)</>}
+        message={
+          <>
+            Xóa đầu mục <b>{deletingGroup?.name}</b>? Toàn bộ{' '}
+            <b>{(allTasks ?? []).filter((t) => t.group_id === deletingGroupId).length} task</b> bên trong
+            (kể cả đã hoàn thành) sẽ bị xóa vĩnh viễn, không thể khôi phục.
+          </>
+        }
         onConfirm={() => {
           setError('')
           if (deletingGroupId) deleteGroup.mutate(deletingGroupId, { onError: (e) => setError(e.message) })

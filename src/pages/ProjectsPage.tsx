@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Button, cardCls, ConfirmDialog, Dialog, Field, Input, Loading, Select, Textarea } from '../components/ui'
 import { useProjectMutations, useProjects, type ProjectInput } from '../hooks/useProjects'
+import { useAllTasks } from '../hooks/useTasks'
 import { cn } from '../lib/utils'
 import { PROJECT_STATUS_LABEL, type Project, type ProjectStatus, type TaskGroup } from '../types'
 
 /** Quản lý Dự án / Gói thầu + Nhóm công việc (WBS) — chỉ Trưởng phòng. */
 export default function ProjectsPage() {
   const { data: projects, isLoading } = useProjects()
+  const { data: allTasks } = useAllTasks()
   const { addProject, updateProject, deleteProject, addGroup, renameGroup, deleteGroup } = useProjectMutations()
 
   const [formOpen, setFormOpen] = useState(false)
@@ -15,6 +17,23 @@ export default function ProjectsPage() {
   const [deletingGroup, setDeletingGroup] = useState<TaskGroup | null>(null)
   const [renamingGroup, setRenamingGroup] = useState<TaskGroup | null>(null)
   const [error, setError] = useState('')
+
+  // Đếm số task thực tế (kể cả đã hoàn thành) theo dự án/đầu mục, để cảnh báo khi xóa mạnh tay
+  const taskCountByProject = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const t of allTasks ?? []) {
+      const pid = t.group?.project?.id
+      if (pid) map.set(pid, (map.get(pid) ?? 0) + 1)
+    }
+    return map
+  }, [allTasks])
+  const taskCountByGroup = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const t of allTasks ?? []) {
+      if (t.group_id) map.set(t.group_id, (map.get(t.group_id) ?? 0) + 1)
+    }
+    return map
+  }, [allTasks])
 
   if (isLoading) return <Loading />
 
@@ -51,8 +70,8 @@ export default function ProjectsPage() {
       ))}
 
       <p className="text-xs text-slate-400">
-        Không thể xóa đầu mục/dự án khi bên trong vẫn còn task — hãy chuyển task sang đầu mục khác
-        (nút "Sửa task") hoặc xóa task trước. Dự án "Lưu trữ" sẽ không hiện khi tạo task mới.
+        Xóa dự án/đầu mục sẽ xóa vĩnh viễn toàn bộ task bên trong (kể cả đã hoàn thành) — không thể khôi phục.
+        Dự án "Lưu trữ" sẽ không hiện khi tạo task mới.
       </p>
 
       <ProjectForm
@@ -68,7 +87,14 @@ export default function ProjectsPage() {
       <ConfirmDialog
         open={!!deletingProject} onClose={() => setDeletingProject(null)}
         title="Xóa dự án" danger confirmLabel="Xóa"
-        message={<>Xóa dự án <b>{deletingProject?.name}</b> cùng toàn bộ nhóm công việc trống bên trong?</>}
+        message={
+          <>
+            Xóa dự án <b>{deletingProject?.name}</b>? Toàn bộ{' '}
+            <b>{deletingProject?.groups?.length ?? 0} đầu mục</b> và{' '}
+            <b>{deletingProject ? taskCountByProject.get(deletingProject.id) ?? 0 : 0} task</b> bên trong
+            (kể cả đã hoàn thành) sẽ bị xóa vĩnh viễn, không thể khôi phục.
+          </>
+        }
         onConfirm={() => {
           setError('')
           if (deletingProject) deleteProject.mutate(deletingProject.id, { onError: (e) => setError(e.message) })
@@ -78,7 +104,13 @@ export default function ProjectsPage() {
       <ConfirmDialog
         open={!!deletingGroup} onClose={() => setDeletingGroup(null)}
         title="Xóa đầu mục" danger confirmLabel="Xóa"
-        message={<>Xóa đầu mục <b>{deletingGroup?.name}</b>?</>}
+        message={
+          <>
+            Xóa đầu mục <b>{deletingGroup?.name}</b>? Toàn bộ{' '}
+            <b>{deletingGroup ? taskCountByGroup.get(deletingGroup.id) ?? 0 : 0} task</b> bên trong
+            (kể cả đã hoàn thành) sẽ bị xóa vĩnh viễn, không thể khôi phục.
+          </>
+        }
         onConfirm={() => {
           setError('')
           if (deletingGroup) deleteGroup.mutate(deletingGroup.id, { onError: (e) => setError(e.message) })

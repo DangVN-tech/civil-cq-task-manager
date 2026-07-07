@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth, useCurrentUser } from '../../context/AuthContext'
+import { useBrowserNotifications } from '../../hooks/useBrowserNotifications'
 import { ResizeHandle, useColumnResize } from '../../hooks/useColumnResize'
 import { useRealtime } from '../../hooks/useRealtime'
 import { useTasks } from '../../hooks/useTasks'
@@ -18,6 +19,7 @@ export default function AppShell() {
   const [q, setQ] = useState('')
   const [pinOpen, setPinOpen] = useState(false)
   const sidebar = useColumnResize('ccq-w-sidebar', 208, 150, 340)
+  const { supported: notifSupported, permission: notifPermission, requestPermission } = useBrowserNotifications()
 
   useRealtime(user.id)
 
@@ -70,6 +72,11 @@ export default function AppShell() {
           )}
           <div className="mt-0.5 font-medium text-brand-500">Task của tôi: {myTaskCount}</div>
         </div>
+        {notifSupported && notifPermission === 'default' && (
+          <Button variant="ghost" onClick={requestPermission} title="Nhận thông báo ngoài màn hình khi tab chạy nền">
+            🔔 Bật thông báo màn hình
+          </Button>
+        )}
         {canChangeOwnPin(user) && (
           <Button variant="ghost" onClick={() => setPinOpen(true)} title="Đổi PIN đăng nhập">Đổi PIN</Button>
         )}

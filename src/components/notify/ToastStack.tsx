@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCurrentUser } from '../../context/AuthContext'
 import { useNotificationActions, useNotifications } from '../../hooks/useNotifications'
@@ -24,6 +24,27 @@ export default function ToastStack() {
   const visible = (data ?? [])
     .filter((n) => !n.snoozed_until || new Date(n.snoozed_until).getTime() <= now)
     .slice(0, MAX_VISIBLE)
+
+  // Bắn thông báo hệ điều hành khi tab đang chạy nền (không cần mở/focus app để thấy),
+  // giống Outlook desktop. Chỉ bắn 1 lần/thông báo trong phiên, và chỉ khi tab không active.
+  const notifiedRef = useRef<Set<number>>(new Set())
+  useEffect(() => {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+    if (!document.hidden) return
+    for (const n of visible) {
+      if (notifiedRef.current.has(n.id)) continue
+      notifiedRef.current.add(n.id)
+      const osNotif = new Notification('Civil&CQ Task Manager', {
+        body: n.message,
+        icon: '/favicon.svg',
+        tag: `ccq-${n.id}`,
+      })
+      osNotif.onclick = () => {
+        window.focus()
+        if (n.task_id) window.location.href = `/dang-thuc-hien?task=${n.task_id}`
+      }
+    }
+  }, [visible])
 
   if (visible.length === 0) return null
 
