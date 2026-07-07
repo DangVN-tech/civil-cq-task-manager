@@ -40,8 +40,8 @@ export default function SearchPage() {
   return (
     <div className="flex h-full">
       <div className="flex shrink-0 flex-col border-r border-slate-100 bg-white" style={{ width }}>
-        <div className="border-b border-slate-100 bg-slate-50/50 px-4 py-2.5 text-xs text-slate-500">
-          Kết quả tìm kiếm cho “{params.get('q')}”: <b className="text-slate-800">{results.length}</b> task
+        <div className="border-b border-slate-200/80 bg-slate-50 px-4 py-2.5 text-xs text-slate-500">
+          Kết quả tìm kiếm cho "{params.get('q')}": <b className="text-slate-800">{results.length}</b> task
         </div>
         <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-3">
           {isLoading ? (

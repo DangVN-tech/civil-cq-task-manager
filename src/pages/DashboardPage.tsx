@@ -1,11 +1,16 @@
-import { useMemo } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import {
+  AlertTriangle, CheckCircle2, ClipboardList, FileSpreadsheet, Loader2, RefreshCw,
+} from 'lucide-react'
 import { cardCls, Loading } from '../components/ui'
 import { useAllTasks } from '../hooks/useTasks'
 import { useProjects } from '../hooks/useProjects'
 import { useUsers } from '../hooks/useUsers'
 import { useStorageUsage } from '../hooks/useStorage'
 import { useCurrentUser } from '../context/AuthContext'
+import { exportActionListExcel } from '../lib/exportExcel'
 import { canManageStorage } from '../lib/permissions'
 import { cn, fmtBytes, isOverdue } from '../lib/utils'
 import { displayRole, PROJECT_STATUS_LABEL, STORAGE_QUOTA } from '../types'
@@ -14,10 +19,13 @@ import { displayRole, PROJECT_STATUS_LABEL, STORAGE_QUOTA } from '../types'
 export default function DashboardPage() {
   const user = useCurrentUser()
   const navigate = useNavigate()
+  const qc = useQueryClient()
   const { data: tasks, isLoading } = useAllTasks()
   const { data: users } = useUsers()
   const { data: projects } = useProjects()
   const { data: usage } = useStorageUsage()
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState('')
 
   const stats = useMemo(() => {
     const all = tasks ?? []
@@ -57,18 +65,69 @@ export default function DashboardPage() {
 
   const usagePct = usage != null ? Math.round((usage / STORAGE_QUOTA) * 100) : 0
 
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['tasks'] })
+    qc.invalidateQueries({ queryKey: ['projects'] })
+    qc.invalidateQueries({ queryKey: ['users'] })
+    qc.invalidateQueries({ queryKey: ['storage-usage'] })
+  }
+
+  const exportExcel = async () => {
+    setExportError('')
+    setExporting(true)
+    try {
+      await exportActionListExcel(projects ?? [], tasks ?? [])
+    } catch (e) {
+      setExportError(e instanceof Error ? e.message : 'Xuất báo cáo thất bại.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   if (isLoading) return <Loading />
 
   return (
     <div className="h-full space-y-5 overflow-y-auto p-6">
-      <h2 className="text-xl font-bold text-slate-950">Dashboard toàn phòng</h2>
+      {/* Banner tiêu đề + hành động */}
+      <div className={`${cardCls} flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between`}>
+        <div>
+          <h2 className="text-xl font-extrabold tracking-tight text-slate-800">Dashboard Toàn Phòng</h2>
+          <p className="mt-1 text-xs text-slate-400">
+            Báo cáo hiệu suất công việc, tình trạng dự án và nhân sự của phòng XD&QLCL.
+          </p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <button
+            onClick={refresh}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600 transition-all hover:bg-slate-200/70"
+          >
+            <RefreshCw size={13} /> Làm mới
+          </button>
+          <button
+            onClick={exportExcel}
+            disabled={exporting}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-brand-500 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-100 transition-all hover:bg-brand-600 disabled:opacity-50"
+          >
+            <FileSpreadsheet size={13} /> {exporting ? 'Đang xuất...' : 'Xuất báo cáo Excel'}
+          </button>
+        </div>
+      </div>
+      {exportError && <p className="text-xs font-semibold text-rose-600">{exportError}</p>}
 
       {/* 4 thẻ thống kê */}
       <div className="grid grid-cols-4 gap-4">
-        <Stat label="Tổng task" value={stats.total} cls="text-slate-900" icon="📋" iconBg="bg-blue-50" />
-        <Stat label="Đang thực hiện" value={stats.inProgress} cls="text-brand-500" icon="⏱" iconBg="bg-blue-50" />
-        <Stat label="Hoàn thành" value={stats.completed} cls="text-emerald-600" icon="✓" iconBg="bg-emerald-50" />
-        <Stat label="Quá hạn" value={stats.overdue} cls="text-rose-600" icon="⚠" iconBg="bg-rose-50" />
+        <div className="rounded-2xl bg-gradient-to-br from-brand-500 to-brand-600 p-5 text-white shadow-lg shadow-indigo-500/10">
+          <div className="flex items-start justify-between">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-widest text-indigo-100">Tổng Task Phòng</span>
+              <p className="mt-1 text-3xl font-extrabold tracking-tight">{stats.total}</p>
+            </div>
+            <div className="rounded-xl bg-white/10 p-2.5"><ClipboardList size={20} /></div>
+          </div>
+        </div>
+        <Stat label="Đang thực hiện" value={stats.inProgress} cls="text-amber-600" iconBg="bg-amber-50 text-amber-500" icon={<Loader2 size={20} />} />
+        <Stat label="Đã hoàn thành" value={stats.completed} cls="text-emerald-600" iconBg="bg-emerald-50 text-emerald-500" icon={<CheckCircle2 size={20} />} />
+        <Stat label="Quá hạn" value={stats.overdue} cls="text-rose-600" iconBg="bg-rose-50 text-rose-500" icon={<AlertTriangle size={20} />} accent />
       </div>
 
       {/* Dung lượng kho file (chỉ trưởng phòng / admin) */}
@@ -94,84 +153,87 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Theo dự án / gói thầu (WBS) — click để xem chi tiết */}
-      <div className={`${cardCls} overflow-hidden`}>
-        <div className="border-b border-slate-100 bg-slate-50/50 p-4 text-xs font-bold uppercase tracking-wider text-slate-500">
-          Theo dự án / gói thầu — bấm vào dòng để xem task
-        </div>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-100 text-xs font-bold text-slate-400">
-              <th className="p-4 font-bold">Dự án</th>
-              <th className="p-4 font-bold">Trạng thái</th>
-              <th className="p-4 text-center font-bold">Tổng task</th>
-              <th className="p-4 text-center font-bold">Đang thực hiện</th>
-              <th className="p-4 text-center font-bold">Hoàn thành</th>
-              <th className="p-4 text-center font-bold">Quá hạn</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {perProject.map((r) => (
-              <tr
-                key={r.project.id}
-                onClick={() => navigate(`/dang-thuc-hien?project=${r.project.id}`)}
-                className="cursor-pointer transition-colors hover:bg-brand-50/50"
-                title="Xem task của dự án này"
-              >
-                <td className="p-4 font-bold text-slate-900">{r.project.name}</td>
-                <td className="p-4 text-xs text-slate-500">{PROJECT_STATUS_LABEL[r.project.status]}</td>
-                <td className="p-4 text-center font-semibold">{r.total}</td>
-                <td className="p-4 text-center"><CountPill value={r.inProgress} cls="bg-blue-50 text-blue-700" /></td>
-                <td className="p-4 text-center"><CountPill value={r.completed} cls="bg-emerald-50 text-emerald-700" /></td>
-                <td className="p-4 text-center"><CountPill value={r.overdue} cls="bg-rose-50 text-rose-700" /></td>
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        {/* Theo dự án / gói thầu (WBS) — click để xem chi tiết */}
+        <div className={`${cardCls} overflow-hidden`}>
+          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 p-4">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-700">Theo dự án / gói thầu</span>
+            <span className="text-[10px] italic text-slate-400">Bấm vào dòng để xem chi tiết</span>
+          </div>
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-slate-100 font-bold text-slate-400">
+                <th className="p-3.5 px-4 font-bold">Dự án</th>
+                <th className="p-3.5 px-3 font-bold">Trạng thái</th>
+                <th className="p-3.5 px-3 text-center font-bold">Tổng</th>
+                <th className="p-3.5 px-3 text-center font-bold text-amber-600">Đang làm</th>
+                <th className="p-3.5 px-3 text-center font-bold text-emerald-600">Xong</th>
+                <th className="p-3.5 px-3 text-center font-bold text-rose-600">Quá hạn</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {perProject.map((r) => (
+                <tr
+                  key={r.project.id}
+                  onClick={() => navigate(`/dang-thuc-hien?project=${r.project.id}`)}
+                  className="cursor-pointer transition-colors hover:bg-brand-50/50"
+                  title="Xem task của dự án này"
+                >
+                  <td className="p-4 font-bold text-slate-900">{r.project.name}</td>
+                  <td className="p-4 text-slate-500">{PROJECT_STATUS_LABEL[r.project.status]}</td>
+                  <td className="p-4 text-center font-semibold">{r.total}</td>
+                  <td className="p-4 text-center"><CountPill value={r.inProgress} cls="bg-blue-50 text-blue-700" /></td>
+                  <td className="p-4 text-center"><CountPill value={r.completed} cls="bg-emerald-50 text-emerald-700" /></td>
+                  <td className="p-4 text-center"><CountPill value={r.overdue} cls="bg-rose-50 text-rose-700" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-      {/* Theo từng nhân sự */}
-      <div className={`${cardCls} overflow-hidden`}>
-        <div className="border-b border-slate-100 bg-slate-50/50 p-4 text-xs font-bold uppercase tracking-wider text-slate-500">
-          Theo từng nhân sự
-        </div>
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-slate-100 text-xs font-bold text-slate-400">
-              <th className="p-4 font-bold">Họ tên</th>
-              <th className="p-4 font-bold">Chức vụ</th>
-              <th className="p-4 text-center font-bold">Đang thực hiện</th>
-              <th className="p-4 text-center font-bold">Hoàn thành</th>
-              <th className="p-4 text-center font-bold">Quá hạn</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {perUser.map((r) => (
-              <tr key={r.user.id} className="transition-colors hover:bg-slate-50/50">
-                <td className="p-4 font-bold text-slate-900">{r.user.full_name}</td>
-                <td className="p-4 text-xs text-slate-500">{displayRole(r.user)}</td>
-                <td className="p-4 text-center"><CountPill value={r.inProgress} cls="bg-blue-50 text-blue-700" /></td>
-                <td className="p-4 text-center"><CountPill value={r.completed} cls="bg-emerald-50 text-emerald-700" /></td>
-                <td className="p-4 text-center"><CountPill value={r.overdue} cls="bg-rose-50 text-rose-700" /></td>
+        {/* Theo từng nhân sự */}
+        <div className={`${cardCls} overflow-hidden`}>
+          <div className="border-b border-slate-100 bg-slate-50/50 p-4">
+            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-700">Theo từng nhân sự</span>
+          </div>
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-slate-100 font-bold text-slate-400">
+                <th className="p-3.5 px-4 font-bold">Họ tên</th>
+                <th className="p-3.5 px-3 font-bold">Chức vụ</th>
+                <th className="p-3.5 px-3 text-center font-bold text-amber-600">Đang làm</th>
+                <th className="p-3.5 px-3 text-center font-bold text-emerald-600">Hoàn thành</th>
+                <th className="p-3.5 px-3 text-center font-bold text-rose-600">Quá hạn</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {perUser.map((r) => (
+                <tr key={r.user.id} className="transition-colors hover:bg-slate-50/50">
+                  <td className="p-4 font-bold text-slate-900">{r.user.full_name}</td>
+                  <td className="p-4 text-slate-500">{displayRole(r.user)}</td>
+                  <td className="p-4 text-center"><CountPill value={r.inProgress} cls="bg-blue-50 text-blue-700" /></td>
+                  <td className="p-4 text-center"><CountPill value={r.completed} cls="bg-emerald-50 text-emerald-700" /></td>
+                  <td className="p-4 text-center"><CountPill value={r.overdue} cls="bg-rose-50 text-rose-700" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
 }
 
-function Stat({ label, value, cls, icon, iconBg }: {
-  label: string; value: number; cls: string; icon: string; iconBg: string
+function Stat({ label, value, cls, icon, iconBg, accent }: {
+  label: string; value: number; cls: string; icon: ReactNode; iconBg: string; accent?: boolean
 }) {
   return (
-    <div className={`${cardCls} flex items-center justify-between p-5`}>
+    <div className={cn(cardCls, 'flex items-center justify-between p-5', accent && 'border-l-4 border-l-rose-500')}>
       <div className="space-y-1">
         <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</p>
         <h3 className={cn('text-3xl font-extrabold', cls)}>{value}</h3>
       </div>
-      <div className={cn('rounded-xl p-3 text-lg', iconBg)}>{icon}</div>
+      <div className={cn('rounded-xl p-2.5', iconBg)}>{icon}</div>
     </div>
   )
 }

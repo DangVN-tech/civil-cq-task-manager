@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { ChevronDown, ChevronRight, Folder, FolderOpen, Pencil, Plus } from 'lucide-react'
 import { cn, fmtDateTime, timeLeftLabel } from '../../lib/utils'
 import type { Priority, Project, Task } from '../../types'
 import MarkDot from './MarkDot'
@@ -95,7 +96,7 @@ export default function TaskTree({
                 onClick={() => toggle(pKey)}
                 className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-sm font-bold text-slate-900 hover:bg-slate-50"
               >
-                <span className="w-3 text-[10px] text-slate-400">{pOpen ? '▼' : '▶'}</span>
+                {pOpen ? <ChevronDown size={12} className="shrink-0 text-slate-400" /> : <ChevronRight size={12} className="shrink-0 text-slate-400" />}
                 <span className="min-w-0 flex-1 truncate uppercase">{proj.name}</span>
                 <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
                   {total}
@@ -105,9 +106,9 @@ export default function TaskTree({
                 <button
                   onClick={() => onEditProject(proj.id)}
                   title="Sửa Dự án: đổi tên, thêm/xóa Đầu mục"
-                  className="mr-1 shrink-0 rounded-md px-1.5 py-0.5 text-xs opacity-0 transition-opacity hover:bg-slate-100 group-hover/proj:opacity-100"
+                  className="mr-1 shrink-0 rounded-md p-1 text-slate-400 opacity-0 transition-opacity hover:bg-slate-100 hover:text-brand-600 group-hover/proj:opacity-100"
                 >
-                  ✏️
+                  <Pencil size={12} />
                 </button>
               )}
             </div>
@@ -126,26 +127,27 @@ export default function TaskTree({
                           onClick={() => toggle(gKey)}
                           className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-1.5 py-1 text-left text-[13px] font-semibold text-slate-700 hover:bg-slate-50"
                         >
-                          <span className="w-3 text-[10px] text-slate-400">{gOpen ? '▼' : '▶'}</span>
-                          <span className="min-w-0 flex-1 truncate">📁 {grp.name}</span>
+                          {gOpen ? <ChevronDown size={10} className="shrink-0 text-slate-400" /> : <ChevronRight size={10} className="shrink-0 text-slate-400" />}
+                          {gOpen ? <FolderOpen size={13} className="shrink-0 text-amber-500" /> : <Folder size={13} className="shrink-0 text-amber-500" />}
+                          <span className="min-w-0 flex-1 truncate">{grp.name}</span>
                           <span className="shrink-0 text-[10px] text-slate-400">{grp.tasks.length}</span>
                         </button>
                         {onEditGroup && grp.id !== '_none' && (
                           <button
                             onClick={() => onEditGroup(grp.id)}
                             title="Sửa Đầu mục: đổi tên, thêm/sửa/xóa task"
-                            className="shrink-0 rounded-md px-1 py-0.5 text-xs opacity-0 transition-opacity hover:bg-slate-100 group-hover/row:opacity-100"
+                            className="shrink-0 rounded-md p-1 text-slate-400 opacity-0 transition-opacity hover:bg-slate-100 hover:text-brand-600 group-hover/row:opacity-100"
                           >
-                            ✏️
+                            <Pencil size={11} />
                           </button>
                         )}
                         {onAddTask && grp.id !== '_none' && (
                           <button
                             onClick={() => onAddTask(grp.id)}
                             title="Tạo task vào đầu mục này"
-                            className="mr-1 shrink-0 rounded-md px-1.5 py-0.5 text-sm font-bold text-brand-500 opacity-0 transition-opacity hover:bg-brand-50 group-hover/row:opacity-100"
+                            className="mr-1 shrink-0 rounded-md p-1 text-brand-500 opacity-0 transition-opacity hover:bg-brand-50 group-hover/row:opacity-100"
                           >
-                            ＋
+                            <Plus size={13} />
                           </button>
                         )}
                       </div>

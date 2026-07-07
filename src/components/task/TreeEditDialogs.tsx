@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Folder, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useProjectMutations, useProjects } from '../../hooks/useProjects'
 import { useAllTasks, useTaskMutations } from '../../hooks/useTasks'
 import { PRIORITY_LABEL, type Task } from '../../types'
@@ -14,7 +15,7 @@ export function EditProjectDialog({
 }) {
   const { data: projects } = useProjects()
   const { data: allTasks } = useAllTasks()
-  const { updateProject, addGroup, renameGroup, deleteGroup } = useProjectMutations()
+  const { updateProject, deleteProject, addGroup, renameGroup, deleteGroup } = useProjectMutations()
   const project = (projects ?? []).find((p) => p.id === projectId) ?? null
 
   const [name, setName] = useState('')
@@ -22,6 +23,7 @@ export function EditProjectDialog({
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [deletingGroupId, setDeletingGroupId] = useState<string | null>(null)
+  const [confirmDeleteProject, setConfirmDeleteProject] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -36,6 +38,8 @@ export function EditProjectDialog({
 
   if (!project) return null
   const deletingGroup = project.groups?.find((g) => g.id === deletingGroupId)
+  const groupIds = new Set((project.groups ?? []).map((g) => g.id))
+  const projectTaskCount = (allTasks ?? []).filter((t) => t.group_id && groupIds.has(t.group_id)).length
 
   const saveName = () => {
     const v = name.trim()
@@ -54,7 +58,7 @@ export function EditProjectDialog({
             <Input value={name} onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && saveName()} />
             <Button onClick={saveName} disabled={!name.trim() || name.trim() === project.name}>
-              Đổi tên
+              <Pencil size={13} /> Đổi tên
             </Button>
           </div>
         </Field>
@@ -80,7 +84,9 @@ export function EditProjectDialog({
               ) : (
                 <div key={g.id}
                   className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-1.5">
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-800">📁 {g.name}</span>
+                  <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-sm font-medium text-slate-800">
+                    <Folder size={13} className="shrink-0 text-amber-500" /> {g.name}
+                  </span>
                   <span className="shrink-0 space-x-3 text-xs font-medium">
                     <button className="text-brand-500 hover:underline"
                       onClick={() => { setRenamingId(g.id); setRenameValue(g.name) }}>
@@ -104,7 +110,7 @@ export function EditProjectDialog({
                 }} />
               <Button disabled={!newGroup.trim()}
                 onClick={() => { addGroup.mutate({ projectId: project.id, name: newGroup.trim() }); setNewGroup('') }}>
-                + Thêm
+                <Plus size={13} /> Thêm
               </Button>
             </div>
           </div>
@@ -112,7 +118,10 @@ export function EditProjectDialog({
 
         {error && <p className="text-xs text-rose-600">{error}</p>}
 
-        <div className="flex justify-end border-t border-slate-100 pt-3">
+        <div className="flex items-center justify-between border-t border-slate-100 pt-3">
+          <Button variant="danger" onClick={() => setConfirmDeleteProject(true)}>
+            <Trash2 size={13} /> Xóa Dự án
+          </Button>
           <Button variant="primary" onClick={onClose}>Xong</Button>
         </div>
       </div>
@@ -130,6 +139,24 @@ export function EditProjectDialog({
         onConfirm={() => {
           setError('')
           if (deletingGroupId) deleteGroup.mutate(deletingGroupId, { onError: (e) => setError(e.message) })
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteProject} onClose={() => setConfirmDeleteProject(false)}
+        title="Xóa Dự án" danger confirmLabel="Xóa"
+        message={
+          <>
+            Xóa dự án <b>{project.name}</b>? Toàn bộ <b>{project.groups?.length ?? 0} đầu mục</b> và{' '}
+            <b>{projectTaskCount} task</b> bên trong (kể cả đã hoàn thành) sẽ bị xóa vĩnh viễn, không thể khôi phục.
+          </>
+        }
+        onConfirm={() => {
+          setError('')
+          deleteProject.mutate(project.id, {
+            onSuccess: () => onClose(),
+            onError: (e) => setError(e.message),
+          })
         }}
       />
     </Dialog>

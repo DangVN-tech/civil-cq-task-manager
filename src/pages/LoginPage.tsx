@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { ArrowLeft, Layers } from 'lucide-react'
 import { changePin, findUserByLoginId, saveSession, verifyPin } from '../lib/auth'
 import { useAuth } from '../context/AuthContext'
 import { supabaseConfigured } from '../lib/supabase'
@@ -105,8 +106,8 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-full items-center justify-center bg-[#f8fafc]">
       <div className="w-full max-w-sm rounded-2xl border border-slate-100 bg-white p-6 shadow-lg shadow-slate-200/50">
-        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-500 text-lg font-bold text-white shadow-md shadow-blue-200">
-          C
+        <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-500 text-white shadow-md shadow-indigo-100">
+          <Layers size={20} />
         </div>
         <h1 className="mb-1 text-center text-lg font-bold tracking-tight text-slate-900">
           Civil<span className="text-brand-500">&</span>CQ Task Manager
@@ -156,7 +157,7 @@ export default function LoginPage() {
               {busy ? 'Đang xác thực...' : 'Xác nhận'}
             </Button>
             <Button type="button" variant="ghost" className="w-full justify-center" onClick={() => { setStep('id'); setPin(''); setError('') }}>
-              ← Quay lại
+              <ArrowLeft size={13} /> Quay lại
             </Button>
           </form>
         )}

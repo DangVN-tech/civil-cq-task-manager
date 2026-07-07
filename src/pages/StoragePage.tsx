@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { Trash2 } from 'lucide-react'
 import { ConfirmDialog, Loading } from '../components/ui'
 import { useAllFiles, useStorageUsage } from '../hooks/useStorage'
 import { deleteFile } from '../lib/files'
@@ -100,9 +101,9 @@ export default function StoragePage() {
                   <td className="p-4 text-xs">{f.uploader?.full_name ?? '—'}</td>
                   <td className="whitespace-nowrap p-4 text-xs text-slate-500">{fmtDateTime(f.uploaded_at)}</td>
                   <td className="whitespace-nowrap p-4 text-right">
-                    <button className="text-xs font-medium text-rose-600 hover:underline"
+                    <button className="inline-flex items-center gap-1 text-xs font-medium text-rose-600 hover:underline"
                       onClick={() => setDeleting(f)}>
-                      Xóa file này
+                      <Trash2 size={12} /> Xóa file này
                     </button>
                   </td>
                 </tr>

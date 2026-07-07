@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { FolderTree, List, Plus } from 'lucide-react'
 import TaskCard from '../components/task/TaskCard'
 import TaskDetail from '../components/task/TaskDetail'
 import TaskForm from '../components/task/TaskForm'
 import TaskTree from '../components/task/TaskTree'
 import { EditGroupDialog, EditProjectDialog } from '../components/task/TreeEditDialogs'
-import { Button, Empty, Loading, Select } from '../components/ui'
+import { Button, Empty, FilterAccordion, Loading, Select } from '../components/ui'
 import { useCurrentUser } from '../context/AuthContext'
 import { ResizeHandle, useColumnResize } from '../hooks/useColumnResize'
 import { useProjects } from '../hooks/useProjects'
@@ -39,7 +40,8 @@ export default function InProgressPage() {
   const [view, setView] = useState<ViewMode>(
     () => (localStorage.getItem('ccq-view-mode') === 'tree' ? 'tree' : 'list'),
   )
-  const filtering = myOnly || priority !== '' || sortBy !== 'default' || projectId !== '' || groupId !== ''
+  const activeFilterCount = [myOnly, priority !== '', sortBy !== 'default', projectId !== '', groupId !== '']
+    .filter(Boolean).length
 
   const setViewMode = (v: ViewMode) => {
     setView(v)
@@ -94,33 +96,36 @@ export default function InProgressPage() {
     <div className="flex h-full">
       {/* ===== Cột danh sách ===== */}
       <div className="flex shrink-0 flex-col border-r border-slate-100 bg-white" style={{ width }}>
-        <div className="space-y-2 border-b border-slate-100 bg-slate-50/50 p-3">
+        {/* Hàng gộp: nút Tạo Dự án + chuyển chế độ xem — tiết kiệm chiều cao */}
+        <div className="flex items-center gap-2 border-b border-slate-100 p-3">
           {canCreateTask(user) && (
-            <Button variant="primary" className="w-full justify-center rounded-xl"
+            <Button variant="primary" className="flex-1 justify-center rounded-xl"
               onClick={() => { setCreateGroupId(null); setCreateOpen(true) }}>
-              + Tạo Dự án
+              <Plus size={14} /> Tạo Dự án
             </Button>
           )}
-
-          {/* Chuyển chế độ xem: Danh sách | Cây thư mục */}
-          <div className="flex overflow-hidden rounded-lg border border-slate-200 bg-white text-xs font-medium">
+          <div className="flex shrink-0 rounded-xl bg-slate-200/65 p-1">
             <button
               onClick={() => setViewMode('list')}
-              className={cn('flex-1 px-2 py-1.5 transition-colors',
-                view === 'list' ? 'bg-brand-500 text-white' : 'text-slate-600 hover:bg-slate-50')}
+              title="Xem danh sách"
+              className={cn('flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-bold transition-all',
+                view === 'list' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-800')}
             >
-              ☰ Danh sách
+              <List size={13} />
             </button>
             <button
               onClick={() => setViewMode('tree')}
-              className={cn('flex-1 px-2 py-1.5 transition-colors',
-                view === 'tree' ? 'bg-brand-500 text-white' : 'text-slate-600 hover:bg-slate-50')}
+              title="Xem theo cây"
+              className={cn('flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-bold transition-all',
+                view === 'tree' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-800')}
             >
-              🗂 Cây thư mục
+              <FolderTree size={13} />
             </button>
           </div>
+        </div>
 
-          {/* Bộ lọc WBS */}
+        {/* Bộ lọc nâng cao: thu gọn mặc định */}
+        <FilterAccordion activeCount={activeFilterCount} onReset={clearFilters}>
           <div className="grid grid-cols-2 gap-1.5">
             <Select
               value={projectId}
@@ -144,33 +149,25 @@ export default function InProgressPage() {
               ))}
             </Select>
           </div>
-
-          <div className="flex flex-wrap items-center gap-1.5 text-xs">
-            <Button
-              variant="ghost"
-              className={cn('px-2 py-1 text-xs', myOnly && 'bg-brand-100 font-semibold text-brand-700')}
-              onClick={() => setMyOnly(!myOnly)}
-            >
-              Task của tôi
-            </Button>
-            <Select value={priority} onChange={(e) => setPriority(e.target.value as '' | Priority)} className="w-auto py-1 text-xs">
+          <div className="grid grid-cols-2 gap-1.5">
+            <Select value={priority} onChange={(e) => setPriority(e.target.value as '' | Priority)} className="py-1 text-xs">
               <option value="">Ưu tiên: tất cả</option>
               {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
                 <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>
               ))}
             </Select>
-            <Select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} className="w-auto py-1 text-xs">
+            <Select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} className="py-1 text-xs">
               <option value="default">Sắp xếp: mặc định</option>
               <option value="deadline">Theo deadline</option>
               <option value="title">Theo tên task</option>
             </Select>
-            {filtering && (
-              <Button variant="ghost" className="px-2 py-1 text-xs text-rose-600" onClick={clearFilters}>
-                Tắt lọc
-              </Button>
-            )}
           </div>
-        </div>
+          <label className="flex cursor-pointer items-center gap-2 py-0.5">
+            <input type="checkbox" checked={myOnly} onChange={(e) => setMyOnly(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 text-brand-500 focus:ring-brand-500" />
+            <span className="text-[11px] font-bold text-slate-600">Task của tôi (Đảm nhận chính)</span>
+          </label>
+        </FilterAccordion>
 
         <div className={cn('min-h-0 flex-1 overflow-y-auto', view === 'list' && 'space-y-2.5 p-3')}>
           {isLoading ? (

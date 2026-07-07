@@ -1,4 +1,5 @@
-import { useEffect, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { useEffect, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react'
+import { ChevronDown, SlidersHorizontal, X } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 /* ============ Button ============ */
@@ -9,7 +10,7 @@ export function Button({
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: BtnVariant }) {
   const styles: Record<BtnVariant, string> = {
-    primary: 'bg-brand-500 text-white hover:bg-brand-600 border-transparent shadow-sm shadow-blue-100',
+    primary: 'bg-brand-500 text-white hover:bg-brand-600 border-transparent shadow-md shadow-indigo-100',
     secondary: 'bg-white text-slate-700 hover:bg-slate-50 border-slate-200',
     danger: 'bg-white text-rose-600 hover:bg-rose-50 border-rose-200',
     ghost: 'bg-transparent text-slate-600 hover:bg-slate-100 border-transparent',
@@ -17,7 +18,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+        'inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-bold transition-all',
         'disabled:cursor-not-allowed disabled:opacity-50',
         styles[variant],
         className,
@@ -29,7 +30,7 @@ export function Button({
 
 /* ============ Input / Textarea / Select ============ */
 const fieldCls =
-  'w-full rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none transition-all focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20'
+  'w-full rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none transition-all focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10'
 
 export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={cn(fieldCls, className)} {...props} />
@@ -83,12 +84,14 @@ export function Dialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onMouseDown={onClose}>
       <div
-        className={cn('w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl', width)}
+        className={cn('w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl', width)}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-3">
-          <h2 className="text-sm font-bold text-slate-900">{title}</h2>
-          <button onClick={onClose} className="rounded-md px-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Đóng">✕</button>
+          <h2 className="text-sm font-extrabold tracking-tight text-slate-800">{title}</h2>
+          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Đóng">
+            <X size={16} />
+          </button>
         </div>
         <div className="max-h-[80vh] overflow-y-auto p-4">{children}</div>
       </div>
@@ -140,8 +143,47 @@ export function ProgressBar({ value, className }: { value: number; className?: s
   )
 }
 
+/* ============ Progress slider (thanh trượt + nút nhanh) ============ */
+export function ProgressSlider({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: number
+  onChange: (v: number) => void
+  disabled?: boolean
+}) {
+  const quick = [0, 25, 50, 75, 100]
+  return (
+    <div className={cn('space-y-2.5', disabled && 'pointer-events-none opacity-60')}>
+      <input
+        type="range" min={0} max={100} step={5} value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-slate-100 accent-brand-500"
+      />
+      <div className="grid grid-cols-5 gap-1">
+        {quick.map((q) => (
+          <button
+            key={q}
+            type="button"
+            onClick={() => onChange(q)}
+            className={cn(
+              'rounded-lg border py-1 text-[10px] font-bold transition-all',
+              q === 100
+                ? 'border-emerald-100 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                : 'border-slate-100 bg-slate-50 text-slate-500 hover:bg-slate-100',
+            )}
+          >
+            {q}%
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /* ============ Card (thẻ trắng bo tròn theo mockup) ============ */
-export const cardCls = 'rounded-xl border border-slate-100 bg-white shadow-sm'
+export const cardCls = 'rounded-2xl border border-slate-200 bg-white shadow-sm'
 
 /* ============ Spinner / empty state ============ */
 export function Loading({ label = 'Đang tải...' }: { label?: string }) {
@@ -150,4 +192,47 @@ export function Loading({ label = 'Đang tải...' }: { label?: string }) {
 
 export function Empty({ label }: { label: string }) {
   return <div className="p-8 text-center text-sm text-slate-400">{label}</div>
+}
+
+/* ============ Bộ lọc nâng cao dạng accordion (thu gọn mặc định) ============ */
+export function FilterAccordion({
+  activeCount,
+  onReset,
+  children,
+}: {
+  activeCount: number
+  onReset?: () => void
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="border-b border-slate-200/80 bg-slate-50 px-3.5 py-2.5">
+      <button onClick={() => setOpen(!open)} className="group flex w-full items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+            <SlidersHorizontal size={11} />
+          </span>
+          <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-700 group-hover:text-brand-600">
+            Bộ lọc nâng cao
+          </span>
+          {activeCount > 0 && (
+            <span className="rounded-full bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold text-brand-600">{activeCount}</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          {activeCount > 0 && onReset && (
+            <span
+              role="button"
+              onClick={(e) => { e.stopPropagation(); onReset() }}
+              className="text-[10px] font-bold text-brand-600 hover:text-brand-800"
+            >
+              Xóa lọc
+            </span>
+          )}
+          <ChevronDown size={14} className={cn('text-slate-400 transition-transform duration-200', open && 'rotate-180')} />
+        </div>
+      </button>
+      {open && <div className="mt-3 space-y-2.5 border-t border-slate-100 pt-3">{children}</div>}
+    </div>
+  )
 }

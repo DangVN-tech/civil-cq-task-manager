@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { X } from 'lucide-react'
 import { useCurrentUser } from '../../context/AuthContext'
 import { useNotificationActions, useNotifications } from '../../hooks/useNotifications'
 import { fmtTime } from '../../lib/utils'
@@ -76,10 +77,10 @@ function Toast({ n, onClose, onSnooze }: {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
       <div className="flex items-center justify-between bg-brand-500 px-3 py-2">
-        <span className="text-xs font-semibold text-white">Civil&CQ Task Manager</span>
-        <button onClick={onClose} className="text-xs text-white/90 hover:text-white" aria-label="Đóng">✕</button>
+        <span className="text-xs font-bold text-white">Civil&CQ Task Manager</span>
+        <button onClick={onClose} className="text-white/90 hover:text-white" aria-label="Đóng"><X size={13} /></button>
       </div>
       <button onClick={open} className="block w-full px-3 py-2.5 text-left text-sm text-slate-800 transition-colors hover:bg-slate-50">
         {n.message}

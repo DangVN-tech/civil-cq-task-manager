@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import TaskCard from '../components/task/TaskCard'
 import TaskDetail from '../components/task/TaskDetail'
-import { Button, Empty, Loading, Select } from '../components/ui'
+import { Empty, FilterAccordion, Loading, Select } from '../components/ui'
 import { ResizeHandle, useColumnResize } from '../hooks/useColumnResize'
 import { useTasks } from '../hooks/useTasks'
 import { completedGroupLabel } from '../lib/utils'
@@ -17,7 +17,7 @@ export default function CompletedPage() {
 
   const [priority, setPriority] = useState<'' | Priority>('')
   const [sortBy, setSortBy] = useState<SortBy>('date')
-  const filtering = priority !== '' || sortBy !== 'date'
+  const activeFilterCount = [priority !== '', sortBy !== 'date'].filter(Boolean).length
 
   const groups = useMemo(() => {
     let arr = tasks ?? []
@@ -43,25 +43,19 @@ export default function CompletedPage() {
   return (
     <div className="flex h-full">
       <div className="flex shrink-0 flex-col border-r border-slate-100 bg-white" style={{ width }}>
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 bg-slate-50/50 p-3 text-xs">
-          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} className="w-auto py-1 text-xs">
+        <FilterAccordion activeCount={activeFilterCount} onReset={() => { setPriority(''); setSortBy('date') }}>
+          <Select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortBy)} className="py-1 text-xs">
             <option value="date">Theo ngày hoàn thành</option>
             <option value="deadline">Theo deadline</option>
             <option value="title">Theo tên task</option>
           </Select>
-          <Select value={priority} onChange={(e) => setPriority(e.target.value as '' | Priority)} className="w-auto py-1 text-xs">
+          <Select value={priority} onChange={(e) => setPriority(e.target.value as '' | Priority)} className="py-1 text-xs">
             <option value="">Ưu tiên: tất cả</option>
             {(Object.keys(PRIORITY_LABEL) as Priority[]).map((p) => (
               <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>
             ))}
           </Select>
-          {filtering && (
-            <Button variant="ghost" className="px-2 py-1 text-xs text-red-600"
-              onClick={() => { setPriority(''); setSortBy('date') }}>
-              Tắt lọc
-            </Button>
-          )}
-        </div>
+        </FilterAccordion>
 
         <div className="min-h-0 flex-1 overflow-y-auto p-3">
           {isLoading ? (

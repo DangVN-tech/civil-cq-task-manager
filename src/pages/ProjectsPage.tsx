@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Folder, Plus } from 'lucide-react'
 import { Button, cardCls, ConfirmDialog, Dialog, Field, Input, Loading, Select, Textarea } from '../components/ui'
 import { useProjectMutations, useProjects, type ProjectInput } from '../hooks/useProjects'
 import { useAllTasks } from '../hooks/useTasks'
@@ -42,7 +43,7 @@ export default function ProjectsPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-slate-950">Quản lý dự án / gói thầu</h2>
         <Button variant="primary" className="rounded-xl" onClick={() => { setEditing(null); setFormOpen(true) }}>
-          + Tạo dự án
+          <Plus size={14} /> Tạo dự án
         </Button>
       </div>
 
@@ -177,7 +178,9 @@ function ProjectCard({
         </h4>
         {groups.map((g) => (
           <div key={g.id} className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50/50 px-3 py-1.5">
-            <span className="text-sm font-medium text-slate-800">📁 {g.name}</span>
+            <span className="flex items-center gap-1.5 text-sm font-medium text-slate-800">
+              <Folder size={13} className="text-amber-500" /> {g.name}
+            </span>
             <span className="space-x-3 text-xs font-medium">
               <button className="text-brand-500 hover:underline" onClick={() => onRenameGroup(g)}>Đổi tên</button>
               <button className="text-rose-600 hover:underline" onClick={() => onDeleteGroup(g)}>Xóa</button>
@@ -192,7 +195,7 @@ function ProjectCard({
             placeholder="Tên đầu mục mới, ví dụ: Quảng Ninh"
             className="text-xs"
           />
-          <Button onClick={add} disabled={!newGroup.trim()}>+ Thêm đầu mục</Button>
+          <Button onClick={add} disabled={!newGroup.trim()}><Plus size={13} /> Thêm đầu mục</Button>
         </div>
       </div>
     </div>

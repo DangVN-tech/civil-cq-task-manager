@@ -1,3 +1,4 @@
+import { Users } from 'lucide-react'
 import { cn, fmtDateTime, timeLeftLabel } from '../../lib/utils'
 import type { Task } from '../../types'
 import PriorityBadge, { PRIORITY_STRIP } from './PriorityBadge'
@@ -46,7 +47,7 @@ export default function TaskCard({
           <span className="mt-2 flex items-center gap-2">
             <ProgressBar value={task.progress} className="h-1.5 max-w-36" />
             <span className="text-xs font-semibold text-slate-600">{task.progress}%</span>
-            <span className="text-xs text-slate-400">👥 {peopleCount}</span>
+            <span className="flex items-center gap-0.5 text-xs text-slate-400"><Users size={11} /> {peopleCount}</span>
           </span>
           <span className="mt-1.5 flex items-center gap-2 text-xs">
             {left ? (

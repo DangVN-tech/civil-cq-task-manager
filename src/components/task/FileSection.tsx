@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useQueryClient } from '@tanstack/react-query'
+import { Download, UploadCloud } from 'lucide-react'
 import { useCurrentUser } from '../../context/AuthContext'
 import { downloadAllFiles, downloadFile, uploadTaskFiles, validateFiles } from '../../lib/files'
 import { canUploadFile } from '../../lib/permissions'
@@ -48,7 +49,7 @@ export default function FileSection({ task }: { task: Task }) {
             variant="ghost" className="px-2 py-0.5 text-xs"
             onClick={() => downloadAllFiles(files, task.title).catch(() => setError('Tải tất cả thất bại.'))}
           >
-            ⭳ Download All
+            <Download size={13} /> Download All
           </Button>
         )}
       </div>
@@ -57,12 +58,16 @@ export default function FileSection({ task }: { task: Task }) {
         <div
           {...getRootProps()}
           className={cn(
-            'mb-2 cursor-pointer rounded-xl border-2 border-dashed bg-slate-50/50 p-5 text-center text-xs transition-colors',
-            isDragActive ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:border-brand-400',
+            'mb-2 cursor-pointer rounded-xl border-2 border-dashed bg-slate-50/50 p-5 text-center transition-colors',
+            isDragActive ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:border-brand-400 hover:bg-brand-50/20',
           )}
         >
           <input {...getInputProps()} accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip,.rar" />
-          {busy ? 'Đang upload...' : 'Kéo thả file vào đây hoặc bấm để chọn (tối đa 6 file, 50 MB/file)'}
+          <UploadCloud size={22} className="mx-auto mb-1 text-slate-400" />
+          <p className="text-xs font-bold text-slate-600">
+            {busy ? 'Đang upload...' : 'Kéo thả file vào đây hoặc bấm để chọn'}
+          </p>
+          <p className="mt-0.5 text-[10px] text-slate-400">Tối đa 6 file · 50 MB/file</p>
         </div>
       )}
 
@@ -88,7 +93,7 @@ export default function FileSection({ task }: { task: Task }) {
                 variant="ghost" className="px-2 py-0.5 text-xs"
                 onClick={() => downloadFile(f).catch(() => setError(`Tải "${f.file_name}" thất bại.`))}
               >
-                ⭳ Tải
+                <Download size={13} /> Tải
               </Button>
             </li>
           ))}

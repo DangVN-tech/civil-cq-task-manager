@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Plus } from 'lucide-react'
 import { Button, ConfirmDialog, Dialog, Field, Input, Loading, Select } from '../components/ui'
 import { useCurrentUser } from '../context/AuthContext'
 import { useStaffMutations, useUsers, type StaffInput } from '../hooks/useUsers'
@@ -22,7 +23,7 @@ export default function StaffPage() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-slate-950">Quản lý nhân sự phòng</h2>
         <Button variant="primary" className="rounded-xl" onClick={() => { setEditing(null); setFormOpen(true) }}>
-          + Thêm nhân sự
+          <Plus size={14} /> Thêm nhân sự
         </Button>
       </div>
 

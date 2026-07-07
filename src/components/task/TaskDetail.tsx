@@ -5,9 +5,10 @@ import {
   canComplete, canDeleteTask, canEditTask, canReopenCompleted,
   canReturnTask, canUpdateProgress,
 } from '../../lib/permissions'
+import { ChevronRight, Pencil, Trash2 } from 'lucide-react'
 import { cn, fmtDate, fmtDateTime, timeLeftLabel } from '../../lib/utils'
 import type { Task } from '../../types'
-import { Button, cardCls, ConfirmDialog, Dialog, ProgressBar, Select, Textarea } from '../ui'
+import { Button, cardCls, ConfirmDialog, Dialog, ProgressSlider, Textarea } from '../ui'
 import ActivityLogView from './ActivityLogView'
 import CommentSection from './CommentSection'
 import FileSection from './FileSection'
@@ -40,29 +41,39 @@ export default function TaskDetail({ task }: { task: Task }) {
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-slate-50/50">
       {/* Header */}
-      <div className="border-b border-slate-100 bg-white px-5 py-4">
-        <div className="flex items-center gap-2.5">
-          <MarkDot task={task} />
-          <h2 className="min-w-0 flex-1 truncate text-lg font-bold text-slate-900">{task.title}</h2>
-          <PriorityBadge priority={task.priority} />
+      <div className="flex flex-col gap-3 border-b border-slate-200 bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1">
+          {/* Breadcrumb Dự án › Đầu mục */}
+          <div className="mb-1 flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest text-slate-400">
+            <span className="truncate">{task.group?.project?.name ?? '—'}</span>
+            <ChevronRight size={10} className="shrink-0" />
+            <span className="truncate text-brand-600">{task.group?.name ?? '—'}</span>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <MarkDot task={task} />
+            <h2 className="min-w-0 truncate text-lg font-extrabold tracking-tight text-slate-900">{task.title}</h2>
+            <PriorityBadge priority={task.priority} />
+          </div>
         </div>
 
         {/* Nút hành động theo quyền */}
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="flex shrink-0 flex-wrap gap-2">
           {inProgress && canComplete(task, user) && (
             <Button variant="primary" onClick={() => setConfirmComplete(true)}>✓ Xác nhận hoàn thành</Button>
           )}
           {!inProgress && canReopenCompleted(task, user) && (
-            <Button onClick={() => setConfirmReopen(true)}>Sửa</Button>
+            <Button onClick={() => setConfirmReopen(true)}><Pencil size={13} /> Sửa</Button>
           )}
           {!inProgress && canReturnTask(user) && (
             <Button variant="danger" onClick={() => { setReturnReason(''); setReturnOpen(true) }}>Trả về</Button>
           )}
           {inProgress && canEditTask(user) && (
-            <Button onClick={() => setEditOpen(true)}>Sửa task</Button>
+            <Button onClick={() => setEditOpen(true)}><Pencil size={13} /> Sửa task</Button>
           )}
           {canDeleteTask(user) && (
-            <Button variant="ghost" className="text-red-600" onClick={() => setConfirmDelete(true)}>Xóa task</Button>
+            <Button variant="ghost" className="text-rose-600 hover:bg-rose-50" onClick={() => setConfirmDelete(true)}>
+              <Trash2 size={13} /> Xóa task
+            </Button>
           )}
         </div>
       </div>
@@ -77,8 +88,6 @@ export default function TaskDetail({ task }: { task: Task }) {
 
         {/* Thông tin chung */}
         <div className={`${cardCls} grid grid-cols-2 gap-x-6 gap-y-2 p-4 text-xs`}>
-          <Info label="Dự án / Gói thầu" value={task.group?.project?.name ?? '—'} />
-          <Info label="Đầu mục" value={task.group?.name ?? '—'} />
           <Info label="Ngày giao việc" value={fmtDate(task.assigned_date)} />
           <Info label="Deadline"
             value={task.deadline
@@ -98,24 +107,32 @@ export default function TaskDetail({ task }: { task: Task }) {
 
         {/* Tiến độ */}
         <section className={`${cardCls} p-4`}>
-          <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">Tiến độ</h3>
-          <div className="flex items-center gap-3">
-            <ProgressBar value={task.progress} className="h-3 flex-1" />
-            <span className={`text-sm font-bold ${task.progress >= 100 ? 'text-emerald-600' : 'text-slate-800'}`}>{task.progress}%</span>
-            {canUpdateProgress(task, user) && (
-              <Select
-                value={task.progress}
-                onChange={(e) => setProgress.mutate({ taskId: task.id, progress: Number(e.target.value) })}
-                className="w-24"
-              >
-                {Array.from({ length: 11 }, (_, i) => i * 10).map((p) => (
-                  <option key={p} value={p}>{p}%</option>
-                ))}
-              </Select>
-            )}
+          <div className="mb-2.5 flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Tiến độ hiện tại</h3>
+            <span className={cn(
+              'rounded-full px-2 py-0.5 text-sm font-extrabold',
+              task.progress >= 100 ? 'bg-emerald-50 text-emerald-600' : 'bg-brand-50 text-brand-600',
+            )}>
+              {task.progress}%
+            </span>
           </div>
-          {inProgress && !canUpdateProgress(task, user) && (
-            <p className="mt-1.5 text-[11px] italic text-slate-400">Chỉ Chủ trì được cập nhật tiến độ.</p>
+          {canUpdateProgress(task, user) ? (
+            <ProgressSlider
+              value={task.progress}
+              onChange={(v) => setProgress.mutate({ taskId: task.id, progress: v })}
+            />
+          ) : (
+            <>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className={cn('h-full rounded-full', task.progress >= 100 ? 'bg-emerald-500' : 'bg-brand-500')}
+                  style={{ width: `${task.progress}%` }}
+                />
+              </div>
+              {inProgress && (
+                <p className="mt-1.5 text-[11px] italic text-slate-400">Chỉ Chủ trì được cập nhật tiến độ.</p>
+              )}
+            </>
           )}
         </section>
 
