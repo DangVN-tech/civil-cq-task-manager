@@ -101,25 +101,25 @@ export default function InProgressPage() {
           {canCreateTask(user) && (
             <Button variant="primary" className="flex-1 justify-center rounded-xl"
               onClick={() => { setCreateGroupId(null); setCreateOpen(true) }}>
-              <Plus size={14} /> Tạo Dự án
+              <Plus size={14} /> Dự án mới
             </Button>
           )}
           <div className="flex shrink-0 rounded-xl bg-slate-200/65 p-1">
-            <button
-              onClick={() => setViewMode('list')}
-              title="Xem danh sách"
-              className={cn('flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-bold transition-all',
-                view === 'list' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-800')}
-            >
-              <List size={13} />
-            </button>
             <button
               onClick={() => setViewMode('tree')}
               title="Xem theo cây"
               className={cn('flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-bold transition-all',
                 view === 'tree' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-800')}
             >
-              <FolderTree size={13} />
+              <FolderTree size={13} /> Cây
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              title="Xem danh sách"
+              className={cn('flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-bold transition-all',
+                view === 'list' ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-800')}
+            >
+              <List size={13} /> Phẳng
             </button>
           </div>
         </div>

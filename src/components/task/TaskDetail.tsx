@@ -95,7 +95,7 @@ export default function TaskDetail({ task }: { task: Task }) {
               <h3 className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
                 <AlignLeft size={14} className="text-brand-500" /> Mô tả công việc
               </h3>
-              <p className="whitespace-pre-wrap rounded-lg border border-slate-100 bg-slate-50 p-3 text-sm font-medium leading-relaxed text-slate-700">
+              <p className="whitespace-pre-wrap rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
                 {task.description || '—'}
               </p>
             </section>

@@ -12,7 +12,7 @@ import { useTasks } from '../../hooks/useTasks'
 import { canChangeOwnPin, canManageProjects, canManageStaff, canManageStorage, canViewDashboard, isParticipant } from '../../lib/permissions'
 import { cn, initials } from '../../lib/utils'
 import { displayRole } from '../../types'
-import { Button, Input } from '../ui'
+import { Input } from '../ui'
 import ToastStack from '../notify/ToastStack'
 import ChangePinDialog from './ChangePinDialog'
 
@@ -71,33 +71,48 @@ export default function AppShell() {
           />
         </form>
 
-        {/* Góc phải trên: thông tin người dùng */}
-        <div className="flex items-center gap-2.5 whitespace-nowrap border-r border-slate-200 pr-3 text-right text-xs leading-tight">
-          <div>
-            <div className="text-sm font-bold text-slate-900">{user.full_name}</div>
-            {(user.role !== 'nhan_vien' || user.is_admin) && (
-              <div className="mt-0.5 text-slate-500">({displayRole(user)})</div>
-            )}
-            <div className="mt-0.5 font-bold text-brand-500">Task của tôi: {myTaskCount}</div>
-          </div>
+        {/* Góc phải trên: thông tin người dùng (theo mockup: avatar → tên/vai trò → nút gọn) */}
+        <div className="flex items-center gap-3 whitespace-nowrap border-l border-slate-200 pl-4 text-left leading-tight">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-tr from-brand-500 to-purple-500 text-xs font-bold text-white shadow-md shadow-indigo-100">
             {initials(user.full_name)}
           </div>
+          <div>
+            <p className="text-xs font-bold text-slate-700">{user.full_name}</p>
+            <p className="text-[10px] font-bold text-brand-600">
+              {(user.role !== 'nhan_vien' || user.is_admin) && `${displayRole(user)} `}
+              (Task của tôi: {myTaskCount})
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            {notifSupported && notifPermission === 'default' && (
+              <button
+                onClick={requestPermission}
+                title="Nhận thông báo ngoài màn hình khi tab chạy nền"
+                className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              >
+                <Bell size={14} />
+              </button>
+            )}
+            {canChangeOwnPin(user) && (
+              <button
+                onClick={() => setPinOpen(true)}
+                title="Đổi PIN đăng nhập"
+                className="rounded-lg p-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
+              >
+                <span className="flex items-center gap-1 rounded border border-slate-200 px-1.5 py-1 text-xs font-semibold">
+                  <KeyRound size={12} /> Đổi PIN
+                </span>
+              </button>
+            )}
+            <button
+              onClick={logout}
+              title="Đăng xuất"
+              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
         </div>
-        {notifSupported && notifPermission === 'default' && (
-          <Button variant="ghost" onClick={requestPermission} title="Nhận thông báo ngoài màn hình khi tab chạy nền">
-            <Bell size={14} /> Bật thông báo
-          </Button>
-        )}
-        {canChangeOwnPin(user) && (
-          <Button variant="ghost" onClick={() => setPinOpen(true)} title="Đổi PIN đăng nhập">
-            <KeyRound size={14} /> Đổi PIN
-          </Button>
-        )}
-        <Button variant="ghost" onClick={logout} title="Đăng xuất"
-          className="text-rose-600 hover:bg-rose-50 hover:text-rose-700">
-          <LogOut size={14} /> Đăng xuất
-        </Button>
       </header>
 
       {/* ===== Thân: sidebar + nội dung ===== */}
