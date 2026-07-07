@@ -160,10 +160,15 @@ export default function TaskTree({
                             return (
                               <div key={t.id} className="flex items-center">
                                 <span className="h-px w-3 shrink-0 bg-slate-200" />
-                                <button
+                                <div
+                                  role="button"
+                                  tabIndex={0}
                                   onClick={() => onSelect(t.id)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(t.id) }
+                                  }}
                                   className={cn(
-                                    'flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] transition-colors',
+                                    'flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] transition-colors',
                                     t.id === selectedId
                                       ? 'bg-brand-50 font-semibold text-brand-700'
                                       : 'text-slate-700 hover:bg-slate-50',
@@ -183,7 +188,7 @@ export default function TaskTree({
                                   ) : (
                                     <span className="shrink-0 text-[11px] text-slate-300">thường xuyên</span>
                                   )}
-                                </button>
+                                </div>
                               </div>
                             )
                           })}

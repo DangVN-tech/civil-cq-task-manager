@@ -21,10 +21,15 @@ export default function TaskCard({
   const peopleCount = task.assignees.length + (task.external_collabs?.length ?? 0)
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() }
+      }}
       className={cn(
-        'relative block w-full rounded-xl border bg-white p-3 pl-4 text-left shadow-sm transition-all hover:shadow-md',
+        'relative block w-full cursor-pointer rounded-xl border bg-white p-3 pl-4 text-left shadow-sm transition-all hover:shadow-md',
         selected ? 'border-brand-500 ring-1 ring-brand-500' : 'border-slate-200',
       )}
     >
@@ -63,6 +68,6 @@ export default function TaskCard({
           </span>
         </>
       )}
-    </button>
+    </div>
   )
 }
