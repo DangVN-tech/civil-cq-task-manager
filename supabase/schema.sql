@@ -17,7 +17,7 @@ create type mark_color as enum ('vang', 'xanh_la', 'tim');
 create type assign_role as enum ('chu_tri', 'phoi_hop');
 create type notif_type as enum (
   'assigned', 'deadline_24h', 'deadline_8h', 'deadline_2h',
-  'deadline_changed', 'returned'
+  'deadline_changed', 'returned', 'comment'
 );
 create type activity_type as enum ('created', 'progress', 'completed');
 create type project_status as enum ('dang_thuc_hien', 'hoan_thanh', 'luu_tru');
@@ -199,6 +199,40 @@ begin
 end $$;
 create trigger trg_assignee_added after insert on task_assignees
   for each row execute function fn_assignee_added();
+
+-- 3.3b Ghi nhật ký -> thông báo người tham gia task (trừ người viết) + Trưởng phòng thật
+create or replace function fn_comment_added() returns trigger
+language plpgsql security definer as $$
+declare
+  v_title  text;
+  v_author text;
+begin
+  -- Chỉ thông báo khi task đang thực hiện
+  select t.title into v_title
+  from tasks t where t.id = new.task_id and t.status = 'dang_thuc_hien';
+  if v_title is null then return new; end if;
+
+  -- Lý do trả về đã có thông báo 'returned' riêng -> bỏ qua để không báo trùng
+  if new.content like 'Lý do trả về:%' then return new; end if;
+
+  select full_name into v_author from users where id = new.user_id;
+
+  insert into notifications(user_id, task_id, type, message)
+  select u.id, new.task_id, 'comment',
+         coalesce(v_author, 'Ai đó') || ' ghi nhật ký ở task "' || v_title || '": ' ||
+         left(new.content, 120) || case when length(new.content) > 120 then '…' else '' end
+  from users u
+  where u.id <> new.user_id
+    and u.is_admin = false
+    and (
+      exists (select 1 from task_assignees ta
+              where ta.task_id = new.task_id and ta.user_id = u.id)
+      or u.role = 'truong_phong'
+    );
+  return new;
+end $$;
+create trigger trg_comment_added after insert on comments
+  for each row execute function fn_comment_added();
 
 -- 3.4 Cập nhật task: tiến độ / hoàn thành / trả về / đổi deadline
 create or replace function fn_task_updated() returns trigger

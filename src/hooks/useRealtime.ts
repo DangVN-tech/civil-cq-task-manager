@@ -34,6 +34,7 @@ export function useRealtime(userId: string) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'comments' }, (payload) => {
         const row = (payload.new ?? payload.old) as { task_id?: string }
         qc.invalidateQueries({ queryKey: ['comments', row?.task_id] })
+        qc.invalidateQueries({ queryKey: ['recent-comments'] })
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, (payload) => {
         const row = (payload.new ?? payload.old) as { task_id?: string }

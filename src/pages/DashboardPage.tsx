@@ -2,17 +2,18 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import {
-  AlertTriangle, CheckCircle2, ClipboardList, FileSpreadsheet, Loader2, RefreshCw,
+  AlertTriangle, CheckCircle2, ClipboardList, FileSpreadsheet, Loader2, MessagesSquare, RefreshCw,
 } from 'lucide-react'
 import { cardCls, Loading } from '../components/ui'
 import { useAllTasks } from '../hooks/useTasks'
+import { useRecentComments } from '../hooks/useTaskDetail'
 import { useProjects } from '../hooks/useProjects'
 import { useUsers } from '../hooks/useUsers'
 import { useStorageUsage } from '../hooks/useStorage'
 import { useCurrentUser } from '../context/AuthContext'
 import { exportActionListExcel } from '../lib/exportExcel'
 import { canManageStorage } from '../lib/permissions'
-import { cn, fmtBytes, isOverdue } from '../lib/utils'
+import { cn, fmtBytes, fmtDateTime, initials, isOverdue } from '../lib/utils'
 import { displayRole, PROJECT_STATUS_LABEL, STORAGE_QUOTA } from '../types'
 
 /** Dashboard toàn phòng — mọi vai trò đều xem được. */
@@ -24,6 +25,7 @@ export default function DashboardPage() {
   const { data: users } = useUsers()
   const { data: projects } = useProjects()
   const { data: usage } = useStorageUsage()
+  const { data: recent } = useRecentComments()
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState('')
 
@@ -70,6 +72,7 @@ export default function DashboardPage() {
     qc.invalidateQueries({ queryKey: ['projects'] })
     qc.invalidateQueries({ queryKey: ['users'] })
     qc.invalidateQueries({ queryKey: ['storage-usage'] })
+    qc.invalidateQueries({ queryKey: ['recent-comments'] })
   }
 
   const exportExcel = async () => {
@@ -152,6 +155,46 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+
+      {/* Hoạt động gần đây: nhật ký xử lý mới nhất toàn phòng */}
+      <div className={`${cardCls} overflow-hidden`}>
+        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 p-4">
+          <span className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-700">
+            <MessagesSquare size={14} className="text-brand-500" /> Hoạt động gần đây — nhật ký xử lý mới nhất
+          </span>
+          <span className="text-[10px] italic text-slate-400">Bấm vào dòng để mở task</span>
+        </div>
+        {(recent ?? []).length === 0 ? (
+          <p className="p-5 text-center text-xs italic text-slate-400">Chưa có nhật ký nào.</p>
+        ) : (
+          <ul className="max-h-80 divide-y divide-slate-100 overflow-y-auto">
+            {(recent ?? []).filter((c) => c.task).map((c) => (
+              <li key={c.id}>
+                <button
+                  onClick={() => navigate(
+                    c.task!.status === 'hoan_thanh'
+                      ? `/hoan-thanh?task=${c.task!.id}`
+                      : `/dang-thuc-hien?task=${c.task!.id}`,
+                  )}
+                  className="flex w-full items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-brand-50/50"
+                >
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-100 text-[10px] font-bold text-brand-700">
+                    {c.user ? initials(c.user.full_name) : '?'}
+                  </div>
+                  <div className="min-w-0 flex-1 text-xs">
+                    <div className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="font-bold text-slate-800">{c.user?.full_name ?? '—'}</span>
+                      <span className="font-mono text-[10px] text-slate-400">[{fmtDateTime(c.created_at)}]</span>
+                      <span className="truncate font-bold text-brand-600">{c.task!.title}</span>
+                    </div>
+                    <p className="mt-0.5 line-clamp-2 text-slate-600">{c.content}</p>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         {/* Theo dự án / gói thầu (WBS) — click để xem chi tiết */}
