@@ -12,7 +12,8 @@ import { ResizeHandle, useColumnResize } from '../hooks/useColumnResize'
 import { useHiddenTasks } from '../hooks/useHiddenTasks'
 import { useProjects } from '../hooks/useProjects'
 import { useTasks } from '../hooks/useTasks'
-import { canCreateTask, canManageProjects, isParticipant } from '../lib/permissions'
+import { useUsers } from '../hooks/useUsers'
+import { canCreateTask, canManageProjects } from '../lib/permissions'
 import { cn, sortInProgress } from '../lib/utils'
 import { PRIORITY_LABEL, type Priority, type Task } from '../types'
 
@@ -25,6 +26,7 @@ export default function InProgressPage() {
   // Chỉ để hiện trong Cây (Phẳng vẫn tự ẩn task hoàn thành như cũ)
   const { data: completedTasks } = useTasks('hoan_thanh')
   const { data: projects } = useProjects()
+  const { data: users } = useUsers()
   const { hidden: hiddenTaskIds, hide: hideTask, unhideAll } = useHiddenTasks(user.id)
   const [params, setParams] = useSearchParams()
   const selectedId = params.get('task')
@@ -35,7 +37,8 @@ export default function InProgressPage() {
   const [editProjectId, setEditProjectId] = useState<string | null>(null)
   const [editGroupId, setEditGroupId] = useState<string | null>(null)
   const [editingTask, setEditingTask] = useState<Task | null>(null)
-  const [myOnly, setMyOnly] = useState(false)
+  // Lọc theo thành viên (Chủ trì hoặc Phối hợp) — rỗng = tất cả
+  const [memberId, setMemberId] = useState('')
   const [priority, setPriority] = useState<'' | Priority>('')
   const [sortBy, setSortBy] = useState<SortBy>('default')
   // Bộ lọc WBS: nhận sẵn ?project= khi đi từ Dashboard sang
@@ -44,7 +47,7 @@ export default function InProgressPage() {
   const [view, setView] = useState<ViewMode>(
     () => (localStorage.getItem('ccq-view-mode') === 'tree' ? 'tree' : 'list'),
   )
-  const activeFilterCount = [myOnly, priority !== '', sortBy !== 'default', projectId !== '', groupId !== '']
+  const activeFilterCount = [memberId !== '', priority !== '', sortBy !== 'default', projectId !== '', groupId !== '']
     .filter(Boolean).length
 
   const setViewMode = (v: ViewMode) => {
@@ -53,10 +56,12 @@ export default function InProgressPage() {
   }
 
   const groupOptions = (projects ?? []).find((p) => p.id === projectId)?.groups ?? []
+  // Nhân sự thật để chọn lọc (Admin không bao giờ được giao task nên không đưa vào danh sách)
+  const memberOptions = (users ?? []).filter((u) => !u.is_admin)
 
   const list = useMemo(() => {
     let arr = tasks ?? []
-    if (myOnly) arr = arr.filter((t) => isParticipant(t, user))
+    if (memberId) arr = arr.filter((t) => t.assignees.some((a) => a.user_id === memberId))
     if (priority) arr = arr.filter((t) => t.priority === priority)
     if (projectId) arr = arr.filter((t) => t.group?.project?.id === projectId)
     if (groupId) arr = arr.filter((t) => t.group_id === groupId)
@@ -65,17 +70,17 @@ export default function InProgressPage() {
     if (sortBy === 'title')
       return [...arr].sort((a, b) => a.title.localeCompare(b.title, 'vi'))
     return sortInProgress(arr) // mặc định: Khẩn -> Gấp -> Quá hạn (Thường) -> Thường
-  }, [tasks, myOnly, priority, projectId, groupId, sortBy, user])
+  }, [tasks, memberId, priority, projectId, groupId, sortBy])
 
-  // Task hoàn thành hiện trong Cây: tôn trọng cùng bộ lọc Dự án/Đầu mục/Ưu tiên/Của tôi
+  // Task hoàn thành hiện trong Cây: tôn trọng cùng bộ lọc Dự án/Đầu mục/Ưu tiên/Thành viên
   const completedForTree = useMemo(() => {
     let arr = completedTasks ?? []
-    if (myOnly) arr = arr.filter((t) => isParticipant(t, user))
+    if (memberId) arr = arr.filter((t) => t.assignees.some((a) => a.user_id === memberId))
     if (priority) arr = arr.filter((t) => t.priority === priority)
     if (projectId) arr = arr.filter((t) => t.group?.project?.id === projectId)
     if (groupId) arr = arr.filter((t) => t.group_id === groupId)
     return arr
-  }, [completedTasks, myOnly, priority, projectId, groupId, user])
+  }, [completedTasks, memberId, priority, projectId, groupId])
 
   // Cây: gộp đang thực hiện + hoàn thành (hoàn thành xếp sau trong mỗi đầu mục), trừ task đã ẩn tay
   const treeTasksAll = useMemo(() => [...list, ...completedForTree], [list, completedForTree])
@@ -87,17 +92,17 @@ export default function InProgressPage() {
     ?? null
   const { width, startDrag } = useColumnResize('ccq-w-list', 400, 300, 640)
 
-  // Bộ khung cây: hiện cả dự án/đầu mục rỗng khi KHÔNG lọc theo task (của tôi / ưu tiên).
+  // Bộ khung cây: hiện cả dự án/đầu mục rỗng khi KHÔNG lọc theo task (thành viên / ưu tiên).
   // Tôn trọng bộ lọc Dự án/Đầu mục để không phình khi đang lọc.
   const skeleton = useMemo(() => {
-    if (myOnly || priority !== '') return undefined
+    if (memberId || priority !== '') return undefined
     let ps = (projects ?? []).filter((p) => p.status !== 'luu_tru' || p.id === projectId)
     if (projectId) ps = ps.filter((p) => p.id === projectId)
     return ps.map((p) => ({
       ...p,
       groups: (p.groups ?? []).filter((g) => !groupId || g.id === groupId),
     }))
-  }, [projects, projectId, groupId, myOnly, priority])
+  }, [projects, projectId, groupId, memberId, priority])
 
   const selectTask = (id: string) => {
     const next = new URLSearchParams(params)
@@ -106,7 +111,7 @@ export default function InProgressPage() {
   }
 
   const clearFilters = () => {
-    setMyOnly(false); setPriority(''); setSortBy('default')
+    setMemberId(''); setPriority(''); setSortBy('default')
     setProjectId(''); setGroupId('')
     const next = new URLSearchParams(params)
     next.delete('project')
@@ -183,11 +188,17 @@ export default function InProgressPage() {
               <option value="title">Theo tên task</option>
             </Select>
           </div>
-          <label className="flex cursor-pointer items-center gap-2 py-0.5">
-            <input type="checkbox" checked={myOnly} onChange={(e) => setMyOnly(e.target.checked)}
-              className="h-4 w-4 rounded border-slate-300 text-brand-500 focus:ring-brand-500" />
-            <span className="text-[11px] font-bold text-slate-600">Task của tôi (Đảm nhận chính)</span>
-          </label>
+          <div>
+            <label className="mb-1 block text-[9px] font-bold uppercase text-slate-400">
+              Lọc theo thành viên (Chủ trì / Phối hợp)
+            </label>
+            <Select value={memberId} onChange={(e) => setMemberId(e.target.value)} className="py-1 text-xs">
+              <option value="">Thành viên: tất cả</option>
+              {memberOptions.map((u) => (
+                <option key={u.id} value={u.id}>{u.id === user.id ? `${u.full_name} (Tôi)` : u.full_name}</option>
+              ))}
+            </Select>
+          </div>
         </FilterAccordion>
 
         {view === 'tree' && hiddenCountInView > 0 && (
