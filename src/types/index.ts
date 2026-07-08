@@ -5,7 +5,7 @@ export type MarkColor = 'vang' | 'xanh_la' | 'tim'
 export type AssignRole = 'chu_tri' | 'phoi_hop'
 export type NotifType =
   | 'assigned' | 'deadline_24h' | 'deadline_8h' | 'deadline_2h'
-  | 'deadline_changed' | 'returned'
+  | 'deadline_changed' | 'returned' | 'deleted'
 export type ActivityType =
   | 'created' | 'progress' | 'completed'
   | 'comment' | 'deadline_changed' | 'returned' | 'file_uploaded'

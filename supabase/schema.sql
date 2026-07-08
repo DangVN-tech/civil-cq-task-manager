@@ -17,7 +17,7 @@ create type mark_color as enum ('vang', 'xanh_la', 'tim');
 create type assign_role as enum ('chu_tri', 'phoi_hop');
 create type notif_type as enum (
   'assigned', 'deadline_24h', 'deadline_8h', 'deadline_2h',
-  'deadline_changed', 'returned'
+  'deadline_changed', 'returned', 'deleted'
 );
 create type activity_type as enum (
   'created', 'progress', 'completed',

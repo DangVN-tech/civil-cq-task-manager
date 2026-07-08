@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { notifyTasksDeleted } from '../lib/deleteNotify'
 import { supabase } from '../lib/supabase'
 import { USER_COLS, type MarkColor, type Priority, type Status, type Task } from '../types'
 
@@ -132,6 +133,8 @@ export function useTaskMutations() {
 
   const deleteTask = useMutation({
     mutationFn: async (taskId: string) => {
+      // Báo Chủ trì/Phối hợp trước khi xóa (cần đọc task_assignees lúc còn tồn tại)
+      await notifyTasksDeleted([taskId])
       // Xóa file trên Storage trước
       const { data: fs } = await supabase.from('files').select('storage_path').eq('task_id', taskId)
       if (fs && fs.length > 0) {

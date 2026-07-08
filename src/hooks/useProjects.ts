@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { notifyTasksDeleted } from '../lib/deleteNotify'
 import { supabase } from '../lib/supabase'
 import type { Project, ProjectStatus } from '../types'
 
@@ -56,6 +57,8 @@ async function deleteTasksInGroups(groupIds: string[]): Promise<void> {
   if (error) throw error
   const taskIds = (tasksRows ?? []).map((t) => t.id as string)
   if (taskIds.length === 0) return
+  // Báo Chủ trì/Phối hợp của từng task trước khi xóa (cần đọc task_assignees lúc còn tồn tại)
+  await notifyTasksDeleted(taskIds)
   await removeTaskFiles(taskIds)
   const { error: eDel } = await supabase.from('tasks').delete().in('id', taskIds)
   if (eDel) throw eDel

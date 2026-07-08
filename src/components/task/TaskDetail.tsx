@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useCurrentUser } from '../../context/AuthContext'
 import { useTaskMutations } from '../../hooks/useTasks'
 import { useActivityFeed, useUpdateReadActions, UPDATE_TYPE_LABEL } from '../../hooks/useUpdates'
@@ -6,7 +6,7 @@ import {
   canComplete, canDeleteTask, canEditTask, canReopenCompleted,
   canReturnTask, canUpdateProgress,
 } from '../../lib/permissions'
-import { AlignLeft, ChevronRight, EyeOff, History, Info as InfoIcon, Pencil, Trash2, TrendingUp } from 'lucide-react'
+import { AlignLeft, ChevronRight, Eye, EyeOff, History, Info as InfoIcon, Pencil, Trash2, TrendingUp } from 'lucide-react'
 import { cn, fmtDate, fmtDateTime, fmtTime, initials, timeLeftLabel } from '../../lib/utils'
 import type { Task } from '../../types'
 import { Button, cardCls, ConfirmDialog, Dialog, ProgressSlider, Textarea } from '../ui'
@@ -36,12 +36,16 @@ export default function TaskDetail({ task }: { task: Task }) {
     .filter((it) => it.task_id === task.id)
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
   const recentUpdates = taskUpdates.slice(0, 5)
+  // Không tính hành động của chính mình (không cần đánh dấu đọc/chưa đọc việc mình vừa làm)
+  const othersUpdates = taskUpdates.filter((it) => it.actor_id !== user.id)
 
-  // Mở Task -> tự động đánh dấu đã đọc mọi cập nhật chưa đọc của task này
+  // Mở Task -> tự động đánh dấu đã đọc mọi cập nhật chưa đọc của task này — CHỈ 1 LẦN khi mở
+  // (không lặp lại mỗi khi feed đổi, tránh tự đọc lại ngay sau khi người dùng bấm "chưa đọc")
+  const markedTaskRef = useRef<string | null>(null)
   useEffect(() => {
-    const unreadIds = taskUpdates
-      .filter((it) => !it.is_read && it.actor_id !== user.id)
-      .map((it) => it.id)
+    if (!feed || markedTaskRef.current === task.id) return
+    markedTaskRef.current = task.id
+    const unreadIds = othersUpdates.filter((it) => !it.is_read).map((it) => it.id)
     if (unreadIds.length > 0) markRead.mutate(unreadIds)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.id, feed])
@@ -94,11 +98,11 @@ export default function TaskDetail({ task }: { task: Task }) {
               <Trash2 size={13} /> Xóa task
             </Button>
           )}
-          {taskUpdates.length > 0 && (
+          {othersUpdates.length > 0 && (
             <Button
               variant="ghost"
-              title="Đánh dấu toàn bộ cập nhật của task này là chưa đọc"
-              onClick={() => markUnread.mutate(taskUpdates.map((it) => it.id))}
+              title="Đánh dấu toàn bộ cập nhật của task này (không tính của bạn) là chưa đọc"
+              onClick={() => markUnread.mutate(othersUpdates.map((it) => it.id))}
             >
               <EyeOff size={13} /> Đánh dấu chưa đọc
             </Button>
@@ -134,28 +138,37 @@ export default function TaskDetail({ task }: { task: Task }) {
                   <History size={14} className="text-brand-500" /> Cập nhật mới nhất
                 </h3>
                 <div className="space-y-2.5">
-                  {recentUpdates.map((it) => (
-                    <div key={it.id} className="flex items-start gap-2.5 text-xs">
-                      <button
-                        onClick={() => (it.is_read ? markUnread.mutate([it.id]) : markRead.mutate([it.id]))}
-                        title={it.is_read ? 'Đánh dấu chưa đọc' : 'Đánh dấu đã đọc'}
-                        className="mt-1 shrink-0"
-                      >
-                        <span className={cn(
-                          'block h-2 w-2 rounded-full border',
-                          it.is_read ? 'border-slate-300' : 'border-brand-500 bg-brand-500',
-                        )} />
-                      </button>
-                      <div className="min-w-0 flex-1">
-                        <span className="font-mono text-[10px] font-bold text-slate-400">{fmtTime(it.created_at)}</span>{' '}
-                        <span className="font-bold text-slate-800">{it.actor_name ?? 'Trưởng phòng'}</span>{' '}
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                          {UPDATE_TYPE_LABEL[it.event_type] ?? it.event_type}
-                        </span>
-                        <p className="mt-0.5 text-slate-600">{it.detail}</p>
+                  {recentUpdates.map((it) => {
+                    const isMine = it.actor_id === user.id
+                    return (
+                      <div key={it.id} className="flex items-start gap-2.5 text-xs">
+                        {isMine ? (
+                          <span className="mt-1 h-2 w-2 shrink-0" />
+                        ) : (
+                          <button
+                            onClick={() => (it.is_read ? markUnread.mutate([it.id]) : markRead.mutate([it.id]))}
+                            title={it.is_read ? 'Đánh dấu chưa đọc' : 'Đánh dấu đã đọc — bấm để chuyển'}
+                            className={cn(
+                              'mt-0.5 flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold transition-colors',
+                              it.is_read
+                                ? 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                                : 'bg-brand-50 text-brand-600 hover:bg-brand-100',
+                            )}
+                          >
+                            {it.is_read ? <EyeOff size={12} /> : <Eye size={12} />}
+                          </button>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <span className="font-mono text-[10px] font-bold text-slate-400">{fmtTime(it.created_at)}</span>{' '}
+                          <span className="font-bold text-slate-800">{it.actor_name ?? 'Trưởng phòng'}</span>{' '}
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                            {UPDATE_TYPE_LABEL[it.event_type] ?? it.event_type}
+                          </span>
+                          <p className="mt-0.5 text-slate-600">{it.detail}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </section>
             )}
