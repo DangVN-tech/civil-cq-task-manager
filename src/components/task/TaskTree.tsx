@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, ChevronRight, Folder, FolderOpen, Pencil, Plus } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronRight, EyeOff, Folder, FolderOpen, Pencil, Plus } from 'lucide-react'
 import { useCurrentUser } from '../../context/AuthContext'
 import { useActivityFeed } from '../../hooks/useUpdates'
 import { cn, fmtDateTime, timeLeftLabel } from '../../lib/utils'
@@ -30,6 +30,7 @@ export default function TaskTree({
   onAddTask,
   onEditProject,
   onEditGroup,
+  onHide,
   skeleton,
 }: {
   tasks: Task[]
@@ -38,6 +39,8 @@ export default function TaskTree({
   onAddTask?: (groupId: string) => void
   onEditProject?: (projectId: string) => void
   onEditGroup?: (groupId: string) => void
+  /** Ẩn tay 1 task khỏi cây (chỉ hiển thị, không đổi dữ liệu) */
+  onHide?: (taskId: string) => void
   /** Bộ khung dự án/đầu mục đầy đủ: nếu có, hiện cả dự án/đầu mục chưa có task nào */
   skeleton?: Project[]
 }) {
@@ -171,8 +174,9 @@ export default function TaskTree({
                         <div className="ml-[27px] border-l-2 border-slate-200">
                           {grp.tasks.map((t) => {
                             const left = timeLeftLabel(t.deadline)
+                            const completed = t.status === 'hoan_thanh'
                             return (
-                              <div key={t.id} className="flex items-center">
+                              <div key={t.id} className="group/task flex items-center">
                                 <span className="h-px w-3 shrink-0 bg-slate-200" />
                                 <div
                                   role="button"
@@ -185,25 +189,48 @@ export default function TaskTree({
                                     'flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] transition-colors',
                                     t.id === selectedId
                                       ? 'bg-brand-50 font-semibold text-brand-700'
-                                      : 'text-slate-700 hover:bg-slate-50',
+                                      : completed
+                                        ? 'text-slate-400 hover:bg-slate-50'
+                                        : 'text-slate-700 hover:bg-slate-50',
                                   )}
                                 >
-                                  <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', DOT[t.priority])} />
-                                  <MarkDot task={t} />
-                                  <span className="min-w-0 flex-1 truncate">{t.title}</span>
-                                  <UnreadBadge count={unreadByTask.get(t.id) ?? 0} />
-                                  <span className="shrink-0 text-[11px] font-semibold text-slate-500">{t.progress}%</span>
-                                  {t.deadline ? (
-                                    <span
-                                      className={cn('shrink-0 text-[11px]', left?.overdue ? 'font-semibold text-rose-600' : 'text-slate-400')}
-                                      title={fmtDateTime(t.deadline)}
-                                    >
-                                      {left?.overdue ? 'quá hạn' : left?.text}
-                                    </span>
+                                  {completed ? (
+                                    <CheckCircle2 size={13} className="shrink-0 text-emerald-400" />
                                   ) : (
-                                    <span className="shrink-0 text-[11px] text-slate-300">thường xuyên</span>
+                                    <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', DOT[t.priority])} />
+                                  )}
+                                  <MarkDot task={t} />
+                                  <span className={cn('min-w-0 flex-1 truncate', completed && 'line-through decoration-slate-300')}>
+                                    {t.title}
+                                  </span>
+                                  {!completed && <UnreadBadge count={unreadByTask.get(t.id) ?? 0} />}
+                                  {completed ? (
+                                    <span className="shrink-0 text-[11px] font-semibold text-emerald-500">Hoàn thành</span>
+                                  ) : (
+                                    <>
+                                      <span className="shrink-0 text-[11px] font-semibold text-slate-500">{t.progress}%</span>
+                                      {t.deadline ? (
+                                        <span
+                                          className={cn('shrink-0 text-[11px]', left?.overdue ? 'font-semibold text-rose-600' : 'text-slate-400')}
+                                          title={fmtDateTime(t.deadline)}
+                                        >
+                                          {left?.overdue ? 'quá hạn' : left?.text}
+                                        </span>
+                                      ) : (
+                                        <span className="shrink-0 text-[11px] text-slate-300">thường xuyên</span>
+                                      )}
+                                    </>
                                   )}
                                 </div>
+                                {onHide && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); onHide(t.id) }}
+                                    title="Ẩn task này khỏi cây"
+                                    className="mr-1 shrink-0 rounded-md p-1 text-slate-400 opacity-0 transition-opacity hover:bg-slate-100 hover:text-rose-500 group-hover/task:opacity-100"
+                                  >
+                                    <EyeOff size={12} />
+                                  </button>
+                                )}
                               </div>
                             )
                           })}

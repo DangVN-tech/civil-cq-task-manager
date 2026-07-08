@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { FolderTree, List, Plus } from 'lucide-react'
+import { EyeOff, FolderTree, List, Plus } from 'lucide-react'
 import TaskCard from '../components/task/TaskCard'
 import TaskDetail from '../components/task/TaskDetail'
 import TaskForm from '../components/task/TaskForm'
@@ -10,6 +10,7 @@ import UnreadUpdatesPanel from '../components/task/UnreadUpdatesPanel'
 import { Button, Empty, FilterAccordion, Loading, Select } from '../components/ui'
 import { useCurrentUser } from '../context/AuthContext'
 import { ResizeHandle, useColumnResize } from '../hooks/useColumnResize'
+import { useHiddenTasks } from '../hooks/useHiddenTasks'
 import { useProjects } from '../hooks/useProjects'
 import { useTasks } from '../hooks/useTasks'
 import { canCreateTask, canManageProjects, isParticipant } from '../lib/permissions'
@@ -22,7 +23,10 @@ type ViewMode = 'list' | 'tree'
 export default function InProgressPage() {
   const user = useCurrentUser()
   const { data: tasks, isLoading } = useTasks('dang_thuc_hien')
+  // Chỉ để hiện trong Cây (Phẳng vẫn tự ẩn task hoàn thành như cũ)
+  const { data: completedTasks } = useTasks('hoan_thanh')
   const { data: projects } = useProjects()
+  const { hidden: hiddenTaskIds, hide: hideTask, unhideAll } = useHiddenTasks(user.id)
   const [params, setParams] = useSearchParams()
   const selectedId = params.get('task')
 
@@ -64,7 +68,24 @@ export default function InProgressPage() {
     return sortInProgress(arr) // mặc định: Khẩn -> Gấp -> Quá hạn (Thường) -> Thường
   }, [tasks, myOnly, priority, projectId, groupId, sortBy, user])
 
-  const selected = (tasks ?? []).find((t) => t.id === selectedId) ?? null
+  // Task hoàn thành hiện trong Cây: tôn trọng cùng bộ lọc Dự án/Đầu mục/Ưu tiên/Của tôi
+  const completedForTree = useMemo(() => {
+    let arr = completedTasks ?? []
+    if (myOnly) arr = arr.filter((t) => isParticipant(t, user))
+    if (priority) arr = arr.filter((t) => t.priority === priority)
+    if (projectId) arr = arr.filter((t) => t.group?.project?.id === projectId)
+    if (groupId) arr = arr.filter((t) => t.group_id === groupId)
+    return arr
+  }, [completedTasks, myOnly, priority, projectId, groupId, user])
+
+  // Cây: gộp đang thực hiện + hoàn thành (hoàn thành xếp sau trong mỗi đầu mục), trừ task đã ẩn tay
+  const treeTasksAll = useMemo(() => [...list, ...completedForTree], [list, completedForTree])
+  const hiddenCountInView = treeTasksAll.filter((t) => hiddenTaskIds.has(t.id)).length
+  const treeTasks = treeTasksAll.filter((t) => !hiddenTaskIds.has(t.id))
+
+  const selected = (tasks ?? []).find((t) => t.id === selectedId)
+    ?? (completedTasks ?? []).find((t) => t.id === selectedId)
+    ?? null
   const { width, startDrag } = useColumnResize('ccq-w-list', 400, 300, 640)
 
   // Bộ khung cây: hiện cả dự án/đầu mục rỗng khi KHÔNG lọc theo task (của tôi / ưu tiên).
@@ -172,12 +193,21 @@ export default function InProgressPage() {
           </label>
         </FilterAccordion>
 
+        {view === 'tree' && hiddenCountInView > 0 && (
+          <button
+            onClick={unhideAll}
+            className="flex items-center justify-center gap-1.5 border-b border-slate-100 bg-slate-50 py-1.5 text-[11px] font-bold text-slate-500 hover:bg-slate-100 hover:text-brand-600"
+          >
+            <EyeOff size={11} /> {hiddenCountInView} task đã ẩn · Hiện lại
+          </button>
+        )}
+
         <div className={cn('min-h-0 flex-1 overflow-y-auto', view === 'list' && 'space-y-2.5 p-3')}>
           {isLoading ? (
             <Loading />
           ) : view === 'tree' ? (
             <TaskTree
-              tasks={list}
+              tasks={treeTasks}
               selectedId={selectedId}
               onSelect={selectTask}
               onAddTask={canCreateTask(user)
@@ -185,6 +215,7 @@ export default function InProgressPage() {
                 : undefined}
               onEditProject={canManageProjects(user) ? setEditProjectId : undefined}
               onEditGroup={canManageProjects(user) ? setEditGroupId : undefined}
+              onHide={hideTask}
               skeleton={skeleton}
             />
           ) : list.length === 0 ? (
