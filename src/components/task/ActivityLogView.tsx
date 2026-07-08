@@ -10,6 +10,10 @@ const DOT: Record<ActivityType, string> = {
   created: 'bg-brand-500 ring-blue-50',
   progress: 'bg-amber-400 ring-amber-50',
   completed: 'bg-emerald-500 ring-emerald-50',
+  comment: 'bg-indigo-400 ring-indigo-50',
+  deadline_changed: 'bg-amber-500 ring-amber-50',
+  returned: 'bg-rose-500 ring-rose-50',
+  file_uploaded: 'bg-slate-400 ring-slate-100',
 }
 
 /** Activity log dạng timeline, thu gọn mặc định: [04/07/2026 08:30] Task được tạo */

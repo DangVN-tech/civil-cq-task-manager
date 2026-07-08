@@ -38,11 +38,17 @@ export function useRealtime(userId: string) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'activity_log' }, (payload) => {
         const row = (payload.new ?? payload.old) as { task_id?: string }
         qc.invalidateQueries({ queryKey: ['activity', row?.task_id] })
+        qc.invalidateQueries({ queryKey: ['activity-feed'] })
       })
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` },
         () => qc.invalidateQueries({ queryKey: ['notifications', userId] }),
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'activity_reads', filter: `user_id=eq.${userId}` },
+        () => qc.invalidateQueries({ queryKey: ['activity-feed'] }),
       )
       .subscribe()
 

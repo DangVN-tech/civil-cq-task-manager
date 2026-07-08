@@ -185,6 +185,22 @@ export function ProgressSlider({
 /* ============ Card (thẻ trắng bo tròn theo mockup) ============ */
 export const cardCls = 'rounded-2xl border border-slate-200 bg-white shadow-sm'
 
+/* ============ Badge số cập nhật chưa đọc (chấm tròn đỏ) ============ */
+export function UnreadBadge({ count, className }: { count: number; className?: string }) {
+  if (count <= 0) return null
+  return (
+    <span
+      className={cn(
+        'inline-flex min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-extrabold leading-4 text-white',
+        className,
+      )}
+      title={`${count} cập nhật chưa đọc`}
+    >
+      {count > 99 ? '99+' : count}
+    </span>
+  )
+}
+
 /* ============ Spinner / empty state ============ */
 export function Loading({ label = 'Đang tải...' }: { label?: string }) {
   return <div className="p-6 text-center text-sm text-slate-400">{label}</div>

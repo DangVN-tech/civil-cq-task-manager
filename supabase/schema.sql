@@ -19,7 +19,10 @@ create type notif_type as enum (
   'assigned', 'deadline_24h', 'deadline_8h', 'deadline_2h',
   'deadline_changed', 'returned'
 );
-create type activity_type as enum ('created', 'progress', 'completed');
+create type activity_type as enum (
+  'created', 'progress', 'completed',
+  'comment', 'deadline_changed', 'returned', 'file_uploaded'
+);
 create type project_status as enum ('dang_thuc_hien', 'hoan_thanh', 'luu_tru');
 
 -- ============================================================
@@ -118,13 +121,23 @@ create table comments (
   created_at timestamptz not null default now()
 );
 
--- Activity log: chỉ 3 sự kiện (tạo / tiến độ / hoàn thành)
+-- Activity log: tạo/tiến độ/hoàn thành (hệ thống) + nhật ký/deadline/trả về/upload (theo dõi cập nhật)
 create table activity_log (
   id         bigint generated always as identity primary key,
   task_id    uuid not null references tasks(id) on delete cascade,
   event_type activity_type not null,
   detail     text not null default '',
+  -- Ai thực hiện; null với deadline_changed/returned (luôn là Trưởng phòng, UI tự gán nhãn)
+  actor_id   uuid references users(id) on delete set null,
   created_at timestamptz not null default now()
+);
+
+-- Trạng thái "đã đọc" từng cập nhật theo từng user (đủ mịn để đánh dấu unread từng dòng riêng lẻ)
+create table activity_reads (
+  activity_id bigint not null references activity_log(id) on delete cascade,
+  user_id     uuid not null references users(id) on delete cascade,
+  read_at     timestamptz not null default now(),
+  primary key (activity_id, user_id)
 );
 
 -- Thông báo
@@ -224,13 +237,16 @@ begin
   if new.status = 'dang_thuc_hien' and old.status = 'hoan_thanh' then
     new.completed_at := null;
     new.completed_by := null;
-    -- Nếu là "Trả về" (có lý do mới) -> thông báo người tham gia
+    -- Nếu là "Trả về" (có lý do mới) -> thông báo người tham gia + ghi activity_log
     if new.last_return_reason is distinct from old.last_return_reason
        and new.last_return_reason is not null then
       insert into notifications(user_id, task_id, type, message)
       select ta.user_id, new.id, 'returned',
              'Task "' || new.title || '" bị trả về. Lý do: ' || new.last_return_reason
       from task_assignees ta where ta.task_id = new.id;
+
+      insert into activity_log(task_id, event_type, detail)
+      values (new.id, 'returned', 'Trả về. Lý do: ' || new.last_return_reason);
     end if;
   end if;
 
@@ -250,12 +266,43 @@ begin
                to_char(new.deadline at time zone 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY HH24:MI')
            end
     from task_assignees ta where ta.task_id = new.id;
+
+    insert into activity_log(task_id, event_type, detail)
+    values (new.id, 'deadline_changed',
+            case
+              when new.deadline is null then 'Bỏ deadline (chuyển thành công việc thường xuyên)'
+              else 'Deadline đổi thành ' ||
+                   to_char(new.deadline at time zone 'Asia/Ho_Chi_Minh', 'DD/MM/YYYY HH24:MI')
+            end);
   end if;
 
   return new;
 end $$;
 create trigger trg_task_updated before update on tasks
   for each row execute function fn_task_updated();
+
+-- 3.5 Nhật ký xử lý -> activity_log (bỏ qua "Lý do trả về:" vì đã có event 'returned' riêng)
+create or replace function fn_comment_activity() returns trigger
+language plpgsql security definer as $$
+begin
+  if new.content like 'Lý do trả về:%' then return new; end if;
+  insert into activity_log(task_id, event_type, actor_id, detail)
+  values (new.task_id, 'comment', new.user_id, new.content);
+  return new;
+end $$;
+create trigger trg_comment_activity after insert on comments
+  for each row execute function fn_comment_activity();
+
+-- 3.6 Upload file -> activity_log
+create or replace function fn_file_activity() returns trigger
+language plpgsql security definer as $$
+begin
+  insert into activity_log(task_id, event_type, actor_id, detail)
+  values (new.task_id, 'file_uploaded', new.uploader_id, 'Đã upload file: ' || new.file_name);
+  return new;
+end $$;
+create trigger trg_file_activity after insert on files
+  for each row execute function fn_file_activity();
 
 -- ============================================================
 -- 4. RPC (gọi từ client)
@@ -299,7 +346,31 @@ returns bigint language sql security definer as $$
   select coalesce(sum(size_bytes), 0)::bigint from files;
 $$;
 
--- 4.4 Quét deadline, chèn thông báo 24h / 8h / 2h (pg_cron gọi mỗi 15 phút)
+-- 4.4 Feed "cập nhật công việc" cho 1 user, JOIN sẵn tên task/dự án/đầu mục + cờ is_read
+--     (PostgREST không biểu đạt được anti-join NOT EXISTS nên cần RPC)
+create or replace function fn_activity_feed(p_user_id uuid, p_limit int default 200)
+returns table(
+  id bigint, task_id uuid, task_title text, project_name text, group_name text,
+  event_type activity_type, detail text, actor_id uuid, actor_name text,
+  actor_is_truong_phong boolean, created_at timestamptz, is_read boolean
+)
+language sql stable as $$
+  select al.id, al.task_id, t.title, p.name, g.name,
+         al.event_type, al.detail, al.actor_id, u.full_name,
+         coalesce(u.role = 'truong_phong' and not u.is_admin, false),
+         al.created_at,
+         exists(select 1 from activity_reads r where r.activity_id = al.id and r.user_id = p_user_id)
+  from activity_log al
+  join tasks t on t.id = al.task_id and t.status = 'dang_thuc_hien'
+  join task_groups g on g.id = t.group_id
+  join projects p on p.id = g.project_id
+  left join users u on u.id = al.actor_id
+  where al.event_type in ('comment','deadline_changed','returned','file_uploaded')
+  order by al.created_at desc
+  limit p_limit
+$$;
+
+-- 4.5 Quét deadline, chèn thông báo 24h / 8h / 2h (pg_cron gọi mỗi 15 phút)
 create or replace function fn_deadline_notifications()
 returns void language plpgsql security definer as $$
 declare r record;
@@ -351,6 +422,7 @@ alter table task_marks     enable row level security;
 alter table files          enable row level security;
 alter table comments       enable row level security;
 alter table activity_log   enable row level security;
+alter table activity_reads enable row level security;
 alter table notifications  enable row level security;
 
 create policy anon_all on projects       for all to anon using (true) with check (true);
@@ -362,6 +434,7 @@ create policy anon_all on task_marks     for all to anon using (true) with check
 create policy anon_all on files          for all to anon using (true) with check (true);
 create policy anon_all on comments       for all to anon using (true) with check (true);
 create policy anon_all on activity_log   for all to anon using (true) with check (true);
+create policy anon_all on activity_reads for all to anon using (true) with check (true);
 create policy anon_all on notifications  for all to anon using (true) with check (true);
 
 -- Bảo vệ cột pin_hash: client KHÔNG BAO GIỜ đọc/ghi trực tiếp
@@ -381,6 +454,7 @@ alter publication supabase_realtime add table task_assignees;
 alter publication supabase_realtime add table files;
 alter publication supabase_realtime add table comments;
 alter publication supabase_realtime add table activity_log;
+alter publication supabase_realtime add table activity_reads;
 alter publication supabase_realtime add table notifications;
 
 -- ============================================================

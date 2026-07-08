@@ -1,9 +1,11 @@
 import { Users } from 'lucide-react'
-import { cn, fmtDateTime, timeLeftLabel } from '../../lib/utils'
+import { useCurrentUser } from '../../context/AuthContext'
+import { useActivityFeed } from '../../hooks/useUpdates'
+import { cn, fmtDateTime, fmtTime, timeLeftLabel } from '../../lib/utils'
 import type { Task } from '../../types'
 import PriorityBadge, { PRIORITY_STRIP } from './PriorityBadge'
 import MarkDot from './MarkDot'
-import { ProgressBar } from '../ui'
+import { ProgressBar, UnreadBadge } from '../ui'
 
 /** Card rút gọn trong danh sách — thẻ trắng bo tròn có dải màu ưu tiên bên trái. */
 export default function TaskCard({
@@ -15,10 +17,16 @@ export default function TaskCard({
   selected: boolean
   onClick: () => void
 }) {
+  const user = useCurrentUser()
+  const { data: feed } = useActivityFeed(user.id)
   const left = timeLeftLabel(task.deadline) // null = không có deadline
   const completed = task.status === 'hoan_thanh'
   const chuTri = task.assignees.find((a) => a.assign_role === 'chu_tri')
   const peopleCount = task.assignees.length + (task.external_collabs?.length ?? 0)
+
+  const taskUpdates = (feed ?? []).filter((it) => it.task_id === task.id)
+  const unreadCount = taskUpdates.filter((it) => !it.is_read && it.actor_id !== user.id).length
+  const latest = taskUpdates[0] // fn_activity_feed đã order created_at desc
 
   return (
     <div
@@ -39,8 +47,16 @@ export default function TaskCard({
       <span className="flex items-center gap-2">
         <MarkDot task={task} />
         <span className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900">{task.title}</span>
+        <UnreadBadge count={unreadCount} />
         <PriorityBadge priority={task.priority} />
       </span>
+
+      {latest && (
+        <p className="mt-1 truncate text-[11px] text-slate-500">
+          <span className="font-semibold text-slate-600">Cập nhật mới nhất:</span>{' '}
+          {latest.actor_name ?? 'Trưởng phòng'} - {fmtTime(latest.created_at)} — {latest.detail}
+        </p>
+      )}
 
       {completed ? (
         <span className="mt-1.5 block text-[11px] text-slate-500">

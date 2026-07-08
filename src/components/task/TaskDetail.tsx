@@ -1,12 +1,13 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useCurrentUser } from '../../context/AuthContext'
 import { useTaskMutations } from '../../hooks/useTasks'
+import { useActivityFeed, useUpdateReadActions, UPDATE_TYPE_LABEL } from '../../hooks/useUpdates'
 import {
   canComplete, canDeleteTask, canEditTask, canReopenCompleted,
   canReturnTask, canUpdateProgress,
 } from '../../lib/permissions'
-import { AlignLeft, ChevronRight, Info as InfoIcon, Pencil, Trash2, TrendingUp } from 'lucide-react'
-import { cn, fmtDate, fmtDateTime, initials, timeLeftLabel } from '../../lib/utils'
+import { AlignLeft, ChevronRight, EyeOff, History, Info as InfoIcon, Pencil, Trash2, TrendingUp } from 'lucide-react'
+import { cn, fmtDate, fmtDateTime, fmtTime, initials, timeLeftLabel } from '../../lib/utils'
 import type { Task } from '../../types'
 import { Button, cardCls, ConfirmDialog, Dialog, ProgressSlider, Textarea } from '../ui'
 import ActivityLogView from './ActivityLogView'
@@ -20,6 +21,8 @@ import TaskForm from './TaskForm'
 export default function TaskDetail({ task }: { task: Task }) {
   const user = useCurrentUser()
   const { setProgress, completeTask, returnTask, reopenTask, deleteTask } = useTaskMutations()
+  const { data: feed } = useActivityFeed(user.id)
+  const { markRead, markUnread } = useUpdateReadActions(user.id)
 
   const [editOpen, setEditOpen] = useState(false)
   const [confirmComplete, setConfirmComplete] = useState(false)
@@ -27,6 +30,21 @@ export default function TaskDetail({ task }: { task: Task }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [returnOpen, setReturnOpen] = useState(false)
   const [returnReason, setReturnReason] = useState('')
+
+  // Cập nhật mới nhất của riêng task này (mới nhất trước), lấy từ feed đã tải sẵn cho panel/badge
+  const taskUpdates = (feed ?? [])
+    .filter((it) => it.task_id === task.id)
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+  const recentUpdates = taskUpdates.slice(0, 5)
+
+  // Mở Task -> tự động đánh dấu đã đọc mọi cập nhật chưa đọc của task này
+  useEffect(() => {
+    const unreadIds = taskUpdates
+      .filter((it) => !it.is_read && it.actor_id !== user.id)
+      .map((it) => it.id)
+    if (unreadIds.length > 0) markRead.mutate(unreadIds)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task.id, feed])
 
   const chuTri = task.assignees.find((a) => a.assign_role === 'chu_tri')
   const phoiHop = task.assignees.filter((a) => a.assign_role === 'phoi_hop')
@@ -76,6 +94,15 @@ export default function TaskDetail({ task }: { task: Task }) {
               <Trash2 size={13} /> Xóa task
             </Button>
           )}
+          {taskUpdates.length > 0 && (
+            <Button
+              variant="ghost"
+              title="Đánh dấu toàn bộ cập nhật của task này là chưa đọc"
+              onClick={() => markUnread.mutate(taskUpdates.map((it) => it.id))}
+            >
+              <EyeOff size={13} /> Đánh dấu chưa đọc
+            </Button>
+          )}
         </div>
       </div>
 
@@ -99,6 +126,39 @@ export default function TaskDetail({ task }: { task: Task }) {
                 {task.description || '—'}
               </p>
             </section>
+
+            {/* Cập nhật mới nhất: 3-5 dòng gần nhất (nhật ký/deadline/trả về/upload), trước Work Log */}
+            {recentUpdates.length > 0 && (
+              <section className={`${cardCls} p-4`}>
+                <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <History size={14} className="text-brand-500" /> Cập nhật mới nhất
+                </h3>
+                <div className="space-y-2.5">
+                  {recentUpdates.map((it) => (
+                    <div key={it.id} className="flex items-start gap-2.5 text-xs">
+                      <button
+                        onClick={() => (it.is_read ? markUnread.mutate([it.id]) : markRead.mutate([it.id]))}
+                        title={it.is_read ? 'Đánh dấu chưa đọc' : 'Đánh dấu đã đọc'}
+                        className="mt-1 shrink-0"
+                      >
+                        <span className={cn(
+                          'block h-2 w-2 rounded-full border',
+                          it.is_read ? 'border-slate-300' : 'border-brand-500 bg-brand-500',
+                        )} />
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <span className="font-mono text-[10px] font-bold text-slate-400">{fmtTime(it.created_at)}</span>{' '}
+                        <span className="font-bold text-slate-800">{it.actor_name ?? 'Trưởng phòng'}</span>{' '}
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                          {UPDATE_TYPE_LABEL[it.event_type] ?? it.event_type}
+                        </span>
+                        <p className="mt-0.5 text-slate-600">{it.detail}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <CommentSection task={task} />
             <ActivityLogView taskId={task.id} />

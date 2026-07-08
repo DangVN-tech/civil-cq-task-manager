@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react'
 import { ChevronDown, ChevronRight, Folder, FolderOpen, Pencil, Plus } from 'lucide-react'
+import { useCurrentUser } from '../../context/AuthContext'
+import { useActivityFeed } from '../../hooks/useUpdates'
 import { cn, fmtDateTime, timeLeftLabel } from '../../lib/utils'
 import type { Priority, Project, Task } from '../../types'
 import MarkDot from './MarkDot'
+import { UnreadBadge } from '../ui'
 
 /* Chấm màu ưu tiên trong cây: 🔴 Khẩn, 🟠 Gấp, ⚪ Thường */
 const DOT: Record<Priority, string> = {
@@ -38,6 +41,17 @@ export default function TaskTree({
   /** Bộ khung dự án/đầu mục đầy đủ: nếu có, hiện cả dự án/đầu mục chưa có task nào */
   skeleton?: Project[]
 }) {
+  const user = useCurrentUser()
+  const { data: feed } = useActivityFeed(user.id)
+  const unreadByTask = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const it of feed ?? []) {
+      if (it.is_read || it.actor_id === user.id) continue
+      m.set(it.task_id, (m.get(it.task_id) ?? 0) + 1)
+    }
+    return m
+  }, [feed, user.id])
+
   // Nút nào đang thu gọn (mặc định: tất cả mở rộng)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const toggle = (key: string) => {
@@ -177,6 +191,7 @@ export default function TaskTree({
                                   <span className={cn('h-2.5 w-2.5 shrink-0 rounded-full', DOT[t.priority])} />
                                   <MarkDot task={t} />
                                   <span className="min-w-0 flex-1 truncate">{t.title}</span>
+                                  <UnreadBadge count={unreadByTask.get(t.id) ?? 0} />
                                   <span className="shrink-0 text-[11px] font-semibold text-slate-500">{t.progress}%</span>
                                   {t.deadline ? (
                                     <span

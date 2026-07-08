@@ -6,7 +6,9 @@ export type AssignRole = 'chu_tri' | 'phoi_hop'
 export type NotifType =
   | 'assigned' | 'deadline_24h' | 'deadline_8h' | 'deadline_2h'
   | 'deadline_changed' | 'returned'
-export type ActivityType = 'created' | 'progress' | 'completed'
+export type ActivityType =
+  | 'created' | 'progress' | 'completed'
+  | 'comment' | 'deadline_changed' | 'returned' | 'file_uploaded'
 export type ProjectStatus = 'dang_thuc_hien' | 'hoan_thanh' | 'luu_tru'
 
 export interface User {
@@ -88,7 +90,24 @@ export interface ActivityRow {
   task_id: string
   event_type: ActivityType
   detail: string
+  actor_id: string | null
   created_at: string
+}
+
+/** 1 dòng trong feed "Cập nhật công việc" (RPC fn_activity_feed) — đã JOIN sẵn tên task/dự án/đầu mục. */
+export interface ActivityFeedItem {
+  id: number
+  task_id: string
+  task_title: string
+  project_name: string
+  group_name: string
+  event_type: ActivityType
+  detail: string
+  actor_id: string | null
+  actor_name: string | null
+  actor_is_truong_phong: boolean
+  created_at: string
+  is_read: boolean
 }
 
 export interface Notification {
