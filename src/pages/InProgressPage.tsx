@@ -6,7 +6,6 @@ import TaskDetail from '../components/task/TaskDetail'
 import TaskForm from '../components/task/TaskForm'
 import TaskTree from '../components/task/TaskTree'
 import { EditGroupDialog, EditProjectDialog } from '../components/task/TreeEditDialogs'
-import UnreadUpdatesPanel from '../components/task/UnreadUpdatesPanel'
 import { Button, Empty, FilterAccordion, Loading, Select } from '../components/ui'
 import { useCurrentUser } from '../context/AuthContext'
 import { ResizeHandle, useColumnResize } from '../hooks/useColumnResize'
@@ -145,8 +144,6 @@ export default function InProgressPage() {
             </button>
           </div>
         </div>
-
-        <UnreadUpdatesPanel onSelectTask={selectTask} />
 
         {/* Bộ lọc nâng cao: thu gọn mặc định */}
         <FilterAccordion activeCount={activeFilterCount} onReset={clearFilters}>

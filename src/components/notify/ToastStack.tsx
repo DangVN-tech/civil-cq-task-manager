@@ -37,7 +37,7 @@ export default function ToastStack() {
       notifiedRef.current.add(n.id)
       const osNotif = new Notification('Civil&CQ Task Manager', {
         body: n.message,
-        icon: '/favicon.svg',
+        icon: '/notification-icon.svg',
         tag: `ccq-${n.id}`,
       })
       osNotif.onclick = () => {
