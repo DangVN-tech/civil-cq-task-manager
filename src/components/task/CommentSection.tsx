@@ -53,7 +53,7 @@ export default function CommentSection({ task }: { task: Task }) {
             </div>
             {/* Định dạng nhật ký: [ngày giờ] / Tên / Nội dung */}
             <div className="flex-1 rounded-xl rounded-tl-none border border-slate-100 bg-slate-50 p-2.5">
-              <div className="font-mono text-[10px] font-bold text-slate-400">[{fmtDateTime(c.created_at)}]</div>
+              <div className="font-mono text-xs font-bold text-slate-500">[{fmtDateTime(c.created_at)}]</div>
               <div className="mt-0.5 text-xs font-bold text-slate-900">
                 {c.user?.full_name ?? '—'}
                 {c.user && (c.user.role !== 'nhan_vien' || c.user.is_admin) && (

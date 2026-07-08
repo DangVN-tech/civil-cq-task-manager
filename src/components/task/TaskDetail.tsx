@@ -7,7 +7,7 @@ import {
   canReturnTask, canUpdateProgress,
 } from '../../lib/permissions'
 import { AlignLeft, ChevronRight, Eye, EyeOff, History, Info as InfoIcon, Pencil, Trash2, TrendingUp } from 'lucide-react'
-import { cn, fmtDate, fmtDateTime, fmtTime, initials, timeLeftLabel } from '../../lib/utils'
+import { cn, fmtDate, fmtDateTime, initials, timeLeftLabel } from '../../lib/utils'
 import type { Task } from '../../types'
 import { Button, cardCls, ConfirmDialog, Dialog, ProgressSlider, Textarea } from '../ui'
 import ActivityLogView from './ActivityLogView'
@@ -35,7 +35,6 @@ export default function TaskDetail({ task }: { task: Task }) {
   const taskUpdates = (feed ?? [])
     .filter((it) => it.task_id === task.id)
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
-  const recentUpdates = taskUpdates.slice(0, 5)
   // Không tính hành động của chính mình (không cần đánh dấu đọc/chưa đọc việc mình vừa làm)
   const othersUpdates = taskUpdates.filter((it) => it.actor_id !== user.id)
 
@@ -131,17 +130,24 @@ export default function TaskDetail({ task }: { task: Task }) {
               </p>
             </section>
 
-            {/* Cập nhật mới nhất: 3-5 dòng gần nhất (nhật ký/deadline/trả về/upload), trước Work Log */}
-            {recentUpdates.length > 0 && (
+            {/* Cập nhật mới nhất: nhật ký/deadline/trả về/upload, trước Work Log — khung cao ~3 dòng, cuộn xem hết */}
+            {taskUpdates.length > 0 && (
               <section className={`${cardCls} p-4`}>
                 <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
                   <History size={14} className="text-brand-500" /> Cập nhật mới nhất
                 </h3>
-                <div className="space-y-2.5">
-                  {recentUpdates.map((it) => {
+                <div className="max-h-44 space-y-2 overflow-y-auto pr-1">
+                  {taskUpdates.map((it) => {
                     const isMine = it.actor_id === user.id
+                    const unread = !it.is_read && !isMine
                     return (
-                      <div key={it.id} className="flex items-start gap-2.5 text-xs">
+                      <div
+                        key={it.id}
+                        className={cn(
+                          'flex items-start gap-2.5 rounded-lg p-2 text-xs transition-colors',
+                          unread && 'border-l-2 border-brand-500 bg-brand-50/60',
+                        )}
+                      >
                         {isMine ? (
                           <span className="mt-1 h-2 w-2 shrink-0" />
                         ) : (
@@ -152,19 +158,25 @@ export default function TaskDetail({ task }: { task: Task }) {
                               'mt-0.5 flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-bold transition-colors',
                               it.is_read
                                 ? 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'
-                                : 'bg-brand-50 text-brand-600 hover:bg-brand-100',
+                                : 'bg-brand-100 text-brand-700 hover:bg-brand-200',
                             )}
                           >
                             {it.is_read ? <EyeOff size={12} /> : <Eye size={12} />}
                           </button>
                         )}
                         <div className="min-w-0 flex-1">
-                          <span className="font-mono text-[10px] font-bold text-slate-400">{fmtTime(it.created_at)}</span>{' '}
-                          <span className="font-bold text-slate-800">{it.actor_name ?? 'Trưởng phòng'}</span>{' '}
+                          <span className={cn('font-mono text-xs font-bold', unread ? 'text-brand-600' : 'text-slate-500')}>
+                            {fmtDateTime(it.created_at)}
+                          </span>{' '}
+                          <span className={cn('font-bold', unread ? 'text-slate-900' : 'text-slate-700')}>
+                            {it.actor_name ?? 'Trưởng phòng'}
+                          </span>{' '}
                           <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                             {UPDATE_TYPE_LABEL[it.event_type] ?? it.event_type}
                           </span>
-                          <p className="mt-0.5 text-slate-600">{it.detail}</p>
+                          <p className={cn('mt-0.5', unread ? 'font-semibold text-slate-800' : 'text-slate-500')}>
+                            {it.detail}
+                          </p>
                         </div>
                       </div>
                     )
