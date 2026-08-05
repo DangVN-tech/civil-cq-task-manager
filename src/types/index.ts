@@ -1,14 +1,14 @@
 export type Role = 'truong_phong' | 'pho_phong' | 'nhan_vien'
 export type Priority = 'khan' | 'gap' | 'thuong'
-export type Status = 'dang_thuc_hien' | 'hoan_thanh'
+export type Status = 'dang_thuc_hien' | 'cho_duyet' | 'hoan_thanh'
 export type MarkColor = 'vang' | 'xanh_la' | 'tim'
 export type AssignRole = 'chu_tri' | 'phoi_hop'
 export type NotifType =
   | 'assigned' | 'deadline_24h' | 'deadline_8h' | 'deadline_2h'
-  | 'deadline_changed' | 'returned' | 'deleted'
+  | 'deadline_changed' | 'returned' | 'deleted' | 'pending_approval'
 export type ActivityType =
   | 'created' | 'progress' | 'completed'
-  | 'comment' | 'deadline_changed' | 'returned' | 'file_uploaded'
+  | 'comment' | 'deadline_changed' | 'returned' | 'file_uploaded' | 'submitted_for_review'
 export type ProjectStatus = 'dang_thuc_hien' | 'hoan_thanh' | 'luu_tru'
 
 export interface User {
@@ -19,10 +19,11 @@ export interface User {
   is_admin: boolean
   pin_changed: boolean
   created_at: string
+  email?: string
 }
 
 /* Cột được phép SELECT trên bảng users (pin_hash bị chặn ở tầng DB) */
-export const USER_COLS = 'id,login_id,full_name,role,is_admin,pin_changed,created_at'
+export const USER_COLS = 'id,login_id,full_name,role,is_admin,pin_changed,created_at,email'
 
 /** Dự án / Gói thầu (WBS cấp 1) */
 export interface Project {

@@ -6,7 +6,7 @@ import type { ActivityType } from '../../types'
 import { cardCls } from '../ui'
 
 /* Chấm màu theo loại sự kiện trên timeline */
-const DOT: Record<ActivityType, string> = {
+export const DOT: Record<ActivityType, string> = {
   created: 'bg-brand-500 ring-blue-50',
   progress: 'bg-amber-400 ring-amber-50',
   completed: 'bg-emerald-500 ring-emerald-50',
@@ -14,6 +14,7 @@ const DOT: Record<ActivityType, string> = {
   deadline_changed: 'bg-amber-500 ring-amber-50',
   returned: 'bg-rose-500 ring-rose-50',
   file_uploaded: 'bg-slate-400 ring-slate-100',
+  submitted_for_review: 'bg-orange-400 ring-orange-50',
 }
 
 /** Activity log dạng timeline, thu gọn mặc định: [04/07/2026 08:30] Task được tạo */

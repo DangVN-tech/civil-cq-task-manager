@@ -154,11 +154,36 @@ export function useTaskMutations() {
     onSuccess: invalidate,
   })
 
+  /** Chủ trì bấm "Hoàn tất" -> gửi duyệt, chưa phải hoàn thành thật */
   const completeTask = useMutation({
+    mutationFn: async ({ taskId }: { taskId: string; userId: string }) => {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: 'cho_duyet' })
+        .eq('id', taskId)
+      if (error) throw error
+    },
+    onSuccess: invalidate,
+  })
+
+  /** Trưởng phòng chốt hoàn thành thật, từ trạng thái Chờ duyệt */
+  const approveTask = useMutation({
     mutationFn: async ({ taskId, userId }: { taskId: string; userId: string }) => {
       const { error } = await supabase
         .from('tasks')
         .update({ status: 'hoan_thanh', completed_by: userId })
+        .eq('id', taskId)
+      if (error) throw error
+    },
+    onSuccess: invalidate,
+  })
+
+  /** Chủ trì tự rút lại (gửi nhầm/sớm) trước khi Trưởng phòng xử lý — không lý do, không thông báo */
+  const withdrawReview = useMutation({
+    mutationFn: async (taskId: string) => {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: 'dang_thuc_hien' })
         .eq('id', taskId)
       if (error) throw error
     },
@@ -217,5 +242,5 @@ export function useTaskMutations() {
     onSuccess: invalidate,
   })
 
-  return { createTask, updateTask, deleteTask, setProgress, completeTask, returnTask, reopenTask, setMark }
+  return { createTask, updateTask, deleteTask, setProgress, completeTask, approveTask, withdrawReview, returnTask, reopenTask, setMark }
 }

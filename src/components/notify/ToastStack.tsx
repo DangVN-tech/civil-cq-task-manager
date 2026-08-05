@@ -21,9 +21,14 @@ export default function ToastStack() {
     return () => clearInterval(t)
   }, [])
 
+  const SHOW_TYPES = ['assigned', 'deadline_24h', 'deadline_8h', 'deadline_2h', 'returned', 'pending_approval']
+
   const now = Date.now()
   const visible = (data ?? [])
-    .filter((n) => !n.snoozed_until || new Date(n.snoozed_until).getTime() <= now)
+    .filter((n) => {
+      if (n.snoozed_until && new Date(n.snoozed_until).getTime() > now) return false
+      return SHOW_TYPES.includes(n.type)
+    })
     .slice(0, MAX_VISIBLE)
 
   // Bắn thông báo hệ điều hành khi tab đang chạy nền (không cần mở/focus app để thấy),
@@ -35,7 +40,7 @@ export default function ToastStack() {
     for (const n of visible) {
       if (notifiedRef.current.has(n.id)) continue
       notifiedRef.current.add(n.id)
-      const osNotif = new Notification('Civil&CQ Task Manager', {
+      const osNotif = new Notification('Civil & QA/QC Task Manager', {
         body: n.message,
         icon: '/notification-icon.svg',
         tag: `ccq-${n.id}`,
@@ -79,7 +84,7 @@ function Toast({ n, onClose, onSnooze }: {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
       <div className="flex items-center justify-between bg-brand-500 px-3 py-2">
-        <span className="text-xs font-bold text-white">Civil&CQ Task Manager</span>
+        <span className="text-xs font-bold text-white">Civil & QA/QC Task Manager</span>
         <button onClick={onClose} className="text-white/90 hover:text-white" aria-label="Đóng"><X size={13} /></button>
       </div>
       <button onClick={open} className="block w-full px-3 py-2.5 text-left text-sm text-slate-800 transition-colors hover:bg-slate-50">

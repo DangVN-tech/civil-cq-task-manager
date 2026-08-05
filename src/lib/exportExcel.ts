@@ -1,8 +1,8 @@
 import type ExcelJS from 'exceljs'
 import { format } from 'date-fns'
 import { supabase } from './supabase'
-import { fmtDateTime, isOverdue } from './utils'
-import { PRIORITY_LABEL, type Project, type Task } from '../types'
+import { fmtDateTime, fmtDate, isOverdue } from './utils'
+import { displayRole, PRIORITY_LABEL, type Project, type Task, type User } from '../types'
 
 /** Lấy toàn bộ comment (nhật ký xử lý) của mọi task trong 1 lần, nhóm theo task_id. */
 async function fetchAllComments(): Promise<Map<string, { created_at: string; content: string }[]>> {
@@ -22,6 +22,7 @@ async function fetchAllComments(): Promise<Map<string, { created_at: string; con
 /** Suy ra "Tình trạng" giống văn phong file Action List gốc của phòng. */
 function statusLabel(t: Task): string {
   if (t.status === 'hoan_thanh') return 'Hoàn thành'
+  if (t.status === 'cho_duyet') return 'Chờ duyệt'
   if (isOverdue(t)) return 'Behind'
   if (t.progress === 0) return 'Pending'
   return 'Ongoing'
@@ -123,7 +124,74 @@ export async function exportActionListExcel(projects: Project[], tasks: Task[]):
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `Action_List_XDQLCL_${format(new Date(), 'dd-MM-yyyy')}.xlsx`
+  a.download = `Action List - XD ${format(new Date(), 'yyyy.MM.dd')}.xlsx`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+}
+
+const PERSON_FILL: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD1FAE5' } }
+
+export type PersonnelRow = {
+  user: User
+  tasks: Task[]
+  inProgress: number
+  overdue: number
+  completed: number
+}
+
+/** Xuất bảng phân chia theo nhân sự: hàng xanh lá tóm tắt mỗi người + task chi tiết bên dưới. */
+export async function exportPersonnelExcel(perUser: PersonnelRow[]): Promise<void> {
+  const { default: ExcelJS } = await import('exceljs')
+  const wb = new ExcelJS.Workbook()
+  const ws = wb.addWorksheet('Phân chia nhân sự')
+
+  const headers = [
+    'Nhân sự', 'Chức vụ', 'Đang làm', 'Quá hạn', 'Hoàn thành',
+    'Task phải làm', 'Đầu mục', 'Deadline', 'Tiến độ', 'Tình trạng',
+  ]
+  ws.columns = [
+    { width: 22 }, { width: 14 }, { width: 10 }, { width: 10 }, { width: 12 },
+    { width: 40 }, { width: 20 }, { width: 14 }, { width: 10 }, { width: 14 },
+  ]
+
+  const hRow = ws.addRow(headers)
+  hRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+  hRow.fill = HEADER_FILL
+
+  for (const r of perUser) {
+    const pRow = ws.addRow([
+      r.user.full_name, displayRole(r.user),
+      r.inProgress, r.overdue, r.completed,
+      '', '', '', '', '',
+    ])
+    pRow.font = { bold: true }
+    pRow.fill = PERSON_FILL
+
+    for (const t of r.tasks) {
+      const tRow = ws.addRow([
+        '', '', '', '', '',
+        t.title,
+        t.group?.name ?? '',
+        t.deadline ? fmtDate(t.deadline) : '',
+        `${t.progress}%`,
+        statusLabel(t),
+      ])
+      tRow.getCell(6).alignment = { wrapText: true, vertical: 'top' }
+    }
+
+    ws.addRow([])
+  }
+
+  ws.views = [{ state: 'frozen', ySplit: 1 }]
+
+  const buf = await wb.xlsx.writeBuffer()
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `Task nhân sự - XD ${format(new Date(), 'yyyy.MM.dd')}.xlsx`
   document.body.appendChild(a)
   a.click()
   a.remove()

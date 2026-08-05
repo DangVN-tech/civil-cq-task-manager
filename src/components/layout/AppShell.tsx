@@ -2,7 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   Bell, CheckCircle2, ChevronsLeft, ChevronsRight, FolderTree,
-  HardDrive, KeyRound, Layers, LogOut, PieChart, Search, Users, Loader2,
+  HardDrive, Hourglass, KeyRound, Layers, LogOut, PieChart, Search, Users, Loader2,
 } from 'lucide-react'
 import { useAuth, useCurrentUser } from '../../context/AuthContext'
 import { useBrowserNotifications } from '../../hooks/useBrowserNotifications'
@@ -32,6 +32,8 @@ export default function AppShell() {
 
   const { data: inProgress } = useTasks('dang_thuc_hien')
   const myTaskCount = (inProgress ?? []).filter((t) => isParticipant(t, user)).length
+  const { data: pendingReview } = useTasks('cho_duyet')
+  const pendingReviewCount = (pendingReview ?? []).length
 
   const toggleCollapsed = () => {
     setCollapsed((v) => {
@@ -55,7 +57,7 @@ export default function AppShell() {
           </div>
           <div className="leading-tight">
             <h1 className="text-base font-extrabold tracking-tight text-slate-900">
-              Civil<span className="text-brand-500">&</span>CQ
+              Civil <span className="text-brand-500">&</span> QA/QC
             </h1>
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Task Manager</p>
           </div>
@@ -134,6 +136,7 @@ export default function AppShell() {
                 <NavItem to="/dashboard" icon={PieChart} iconColor="text-brand-500" collapsed={collapsed}>Dashboard</NavItem>
               )}
               <NavItem to="/dang-thuc-hien" icon={Loader2} iconColor="text-amber-500" collapsed={collapsed}>Đang thực hiện</NavItem>
+              <NavItem to="/cho-duyet" icon={Hourglass} iconColor="text-orange-500" collapsed={collapsed} badge={pendingReviewCount}>Chờ duyệt</NavItem>
               <NavItem to="/hoan-thanh" icon={CheckCircle2} iconColor="text-emerald-500" collapsed={collapsed}>Hoàn thành</NavItem>
               {canManageProjects(user) && (
                 <NavItem to="/du-an" icon={FolderTree} iconColor="text-blue-500" collapsed={collapsed}>Quản lý dự án</NavItem>
@@ -165,12 +168,14 @@ export default function AppShell() {
 }
 
 function NavItem({
-  to, icon: Icon, iconColor, collapsed, children,
+  to, icon: Icon, iconColor, collapsed, badge, children,
 }: {
   to: string
   icon: typeof PieChart
   iconColor: string
   collapsed: boolean
+  /** Số đếm hiển thị cạnh nhãn (vd task chờ xử lý); 0/undefined = không hiện */
+  badge?: number
   children: ReactNode
 }) {
   return (
@@ -188,7 +193,15 @@ function NavItem({
       }
     >
       <Icon size={16} className={cn('shrink-0', iconColor)} />
-      {!collapsed && <span className="truncate">{children}</span>}
+      {!collapsed && <span className="min-w-0 flex-1 truncate">{children}</span>}
+      {!!badge && (
+        <span className={cn(
+          'flex shrink-0 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-extrabold text-white',
+          collapsed && 'absolute translate-x-3 -translate-y-3',
+        )}>
+          {badge}
+        </span>
+      )}
     </NavLink>
   )
 }

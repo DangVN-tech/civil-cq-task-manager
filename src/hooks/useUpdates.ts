@@ -5,15 +5,17 @@ import type { ActivityFeedItem } from '../types'
 /** Thứ tự ưu tiên hiển thị (yêu cầu: Trả về > Deadline đổi > Trưởng phòng phản hồi > Comment mới > Upload file). */
 export function updatePriorityRank(item: Pick<ActivityFeedItem, 'event_type' | 'actor_is_truong_phong'>): number {
   switch (item.event_type) {
-    case 'returned': return 1
-    case 'deadline_changed': return 2
-    case 'comment': return item.actor_is_truong_phong ? 3 : 4
-    case 'file_uploaded': return 5
-    default: return 6
+    case 'submitted_for_review': return 1
+    case 'returned': return 2
+    case 'deadline_changed': return 3
+    case 'comment': return item.actor_is_truong_phong ? 4 : 5
+    case 'file_uploaded': return 6
+    default: return 7
   }
 }
 
 export const UPDATE_TYPE_LABEL: Record<string, string> = {
+  submitted_for_review: 'Gửi duyệt hoàn thành',
   returned: 'Task bị trả về',
   deadline_changed: 'Đổi Deadline',
   comment: 'Nhật ký cập nhật',

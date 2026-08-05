@@ -7,6 +7,7 @@ import CompletedPage from './pages/CompletedPage'
 import DashboardPage from './pages/DashboardPage'
 import InProgressPage from './pages/InProgressPage'
 import LoginPage from './pages/LoginPage'
+import PendingReviewPage from './pages/PendingReviewPage'
 import SearchPage from './pages/SearchPage'
 import StaffPage from './pages/StaffPage'
 import StoragePage from './pages/StoragePage'
@@ -23,6 +24,7 @@ export default function App() {
       <Route element={<AppShell />}>
         <Route path="/" element={<Navigate to="/dang-thuc-hien" replace />} />
         <Route path="/dang-thuc-hien" element={<InProgressPage />} />
+        <Route path="/cho-duyet" element={<PendingReviewPage />} />
         <Route path="/hoan-thanh" element={<CompletedPage />} />
         <Route path="/tim-kiem" element={<SearchPage />} />
         <Route

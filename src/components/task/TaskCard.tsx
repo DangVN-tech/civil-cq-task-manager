@@ -1,6 +1,7 @@
 import { Users } from 'lucide-react'
 import { useCurrentUser } from '../../context/AuthContext'
 import { useActivityFeed } from '../../hooks/useUpdates'
+import { canViewTaskFull } from '../../lib/permissions'
 import { cn, fmtDateTime, fmtTime, timeLeftLabel } from '../../lib/utils'
 import type { Task } from '../../types'
 import PriorityBadge, { PRIORITY_STRIP } from './PriorityBadge'
@@ -19,8 +20,10 @@ export default function TaskCard({
 }) {
   const user = useCurrentUser()
   const { data: feed } = useActivityFeed(user.id)
+  const full = canViewTaskFull(task, user)
   const left = timeLeftLabel(task.deadline) // null = không có deadline
   const completed = task.status === 'hoan_thanh'
+  const pendingReview = task.status === 'cho_duyet'
   const chuTri = task.assignees.find((a) => a.assign_role === 'chu_tri')
   const peopleCount = task.assignees.length + (task.external_collabs?.length ?? 0)
 
@@ -51,11 +54,18 @@ export default function TaskCard({
         <PriorityBadge priority={task.priority} />
       </span>
 
-      {latest && (
+      {full && latest && (
         <p className="mt-1 truncate text-[11px] text-slate-500">
           <span className="font-semibold text-slate-600">Cập nhật mới nhất:</span>{' '}
           {latest.actor_name ?? 'Trưởng phòng'} - {fmtTime(latest.created_at)} — {latest.detail}
         </p>
+      )}
+
+      {!full && (
+        <span className="mt-1.5 flex items-center gap-1 text-[11px] text-slate-500">
+          <Users size={11} className="text-slate-400" />
+          Phụ trách: <span className="font-semibold text-slate-600">{chuTri?.user?.full_name ?? '—'}</span>
+        </span>
       )}
 
       {completed ? (
@@ -63,13 +73,20 @@ export default function TaskCard({
           Hoàn thành {task.completed_at ? fmtDateTime(task.completed_at) : ''}
           {task.completer ? ` · ${task.completer.full_name}` : chuTri?.user ? ` · ${chuTri.user.full_name}` : ''}
         </span>
+      ) : pendingReview ? (
+        <span className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-amber-600">
+          ⏳ Chờ duyệt hoàn thành
+          {chuTri?.user && <span className="font-normal text-slate-400">· {chuTri.user.full_name}</span>}
+        </span>
       ) : (
         <>
-          <span className="mt-2 flex items-center gap-2">
-            <ProgressBar value={task.progress} className="h-1.5 max-w-36" />
-            <span className="text-xs font-semibold text-slate-600">{task.progress}%</span>
-            <span className="flex items-center gap-0.5 text-xs text-slate-400"><Users size={11} /> {peopleCount}</span>
-          </span>
+          {full && (
+            <span className="mt-2 flex items-center gap-2">
+              <ProgressBar value={task.progress} className="h-1.5 max-w-36" />
+              <span className="text-xs font-semibold text-slate-600">{task.progress}%</span>
+              <span className="flex items-center gap-0.5 text-xs text-slate-400"><Users size={11} /> {peopleCount}</span>
+            </span>
+          )}
           <span className="mt-1.5 flex items-center gap-2 text-xs">
             {left ? (
               <>

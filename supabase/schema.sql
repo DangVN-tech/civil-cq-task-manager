@@ -1,6 +1,13 @@
 -- ============================================================
--- Civil&CQ Task Manager - Database Schema
+-- Civil & QA/QC Task Manager - Database Schema
 -- Chạy TOÀN BỘ file này 1 lần trong Supabase Dashboard > SQL Editor
+--
+-- ⚠️ CẢNH BÁO: KHÔNG chạy lại file này (hay bất kỳ file .sql nào khác
+-- trong thư mục supabase/) vào project PRODUCTION đang có dữ liệu thật,
+-- trừ khi đã đọc kỹ và chắc chắn 100% đó là thao tác cần thiết.
+-- Gói Supabase Free KHÔNG có backup tự động — chạy nhầm sẽ mất dữ liệu
+-- vĩnh viễn, không thể khôi phục. Luôn `npm run backup` trước khi chạy
+-- bất kỳ migration nào lên production.
 -- ============================================================
 
 -- Extensions
@@ -12,16 +19,16 @@ create extension if not exists pg_cron;
 -- ============================================================
 create type user_role as enum ('truong_phong', 'pho_phong', 'nhan_vien');
 create type task_priority as enum ('khan', 'gap', 'thuong');
-create type task_status as enum ('dang_thuc_hien', 'hoan_thanh');
+create type task_status as enum ('dang_thuc_hien', 'cho_duyet', 'hoan_thanh');
 create type mark_color as enum ('vang', 'xanh_la', 'tim');
 create type assign_role as enum ('chu_tri', 'phoi_hop');
 create type notif_type as enum (
   'assigned', 'deadline_24h', 'deadline_8h', 'deadline_2h',
-  'deadline_changed', 'returned', 'deleted'
+  'deadline_changed', 'returned', 'deleted', 'pending_approval'
 );
 create type activity_type as enum (
   'created', 'progress', 'completed',
-  'comment', 'deadline_changed', 'returned', 'file_uploaded'
+  'comment', 'deadline_changed', 'returned', 'file_uploaded', 'submitted_for_review'
 );
 create type project_status as enum ('dang_thuc_hien', 'hoan_thanh', 'luu_tru');
 
@@ -225,16 +232,28 @@ begin
     values (new.id, 'progress', 'Tiến độ cập nhật: ' || new.progress || '%');
   end if;
 
-  -- Hoàn thành
-  if new.status = 'hoan_thanh' and old.status = 'dang_thuc_hien' then
+  -- Chủ trì bấm "Hoàn tất": gửi duyệt lên Trưởng phòng
+  if new.status = 'cho_duyet' and old.status = 'dang_thuc_hien' then
+    insert into activity_log(task_id, event_type, detail)
+    values (new.id, 'submitted_for_review', 'Gửi duyệt hoàn thành');
+    insert into notifications(user_id, task_id, type, message)
+    select u.id, new.id, 'pending_approval',
+           'Task "' || new.title || '" đang chờ bạn duyệt hoàn thành.'
+    from users u where u.role = 'truong_phong' and u.is_admin = false;
+  end if;
+
+  -- Trưởng phòng xác nhận hoàn thành (chỉ từ Chờ duyệt)
+  if new.status = 'hoan_thanh' and old.status = 'cho_duyet' then
     new.completed_at := now();
     new.progress := 100;
     insert into activity_log(task_id, event_type, detail)
     values (new.id, 'completed', 'Hoàn thành');
   end if;
 
-  -- Quay lại đang thực hiện (Trả về hoặc chủ trì bấm Sửa)
-  if new.status = 'dang_thuc_hien' and old.status = 'hoan_thanh' then
+  -- Quay lại đang thực hiện: Trả về (từ Hoàn thành hoặc Chờ duyệt, có lý do)
+  -- hoặc Hủy gửi duyệt (từ Chờ duyệt, không có lý do -> im lặng, không báo)
+  -- hoặc chủ trì bấm Sửa
+  if new.status = 'dang_thuc_hien' and old.status in ('hoan_thanh', 'cho_duyet') then
     new.completed_at := null;
     new.completed_by := null;
     -- Nếu là "Trả về" (có lý do mới) -> thông báo người tham gia + ghi activity_log
@@ -361,11 +380,11 @@ language sql stable as $$
          al.created_at,
          exists(select 1 from activity_reads r where r.activity_id = al.id and r.user_id = p_user_id)
   from activity_log al
-  join tasks t on t.id = al.task_id and t.status = 'dang_thuc_hien'
+  join tasks t on t.id = al.task_id and t.status in ('dang_thuc_hien', 'cho_duyet')
   join task_groups g on g.id = t.group_id
   join projects p on p.id = g.project_id
   left join users u on u.id = al.actor_id
-  where al.event_type in ('comment','deadline_changed','returned','file_uploaded')
+  where al.event_type in ('comment','deadline_changed','returned','file_uploaded','submitted_for_review')
   order by al.created_at desc
   limit p_limit
 $$;
