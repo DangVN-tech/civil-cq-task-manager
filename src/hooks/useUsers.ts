@@ -19,6 +19,7 @@ export interface StaffInput {
   login_id: string
   full_name: string
   role: Role
+  email?: string
 }
 
 export function useStaffMutations() {
@@ -27,9 +28,13 @@ export function useStaffMutations() {
 
   const addStaff = useMutation({
     mutationFn: async (input: StaffInput) => {
-      const { error } = await supabase.from('users').insert(input)
+      const payload = { ...input, email: input.email?.trim().toLowerCase() || null }
+      const { error } = await supabase.from('users').insert(payload)
       if (error) {
-        if (error.code === '23505') throw new Error(`ID "${input.login_id}" đã tồn tại.`)
+        if (error.code === '23505') {
+          if (error.message.includes('email')) throw new Error(`Email "${input.email}" đã được dùng cho tài khoản khác.`)
+          throw new Error(`ID "${input.login_id}" đã tồn tại.`)
+        }
         if (error.code === '23514') throw new Error('ID chỉ được chứa chữ thường không dấu và số.')
         throw error
       }
@@ -39,9 +44,13 @@ export function useStaffMutations() {
 
   const updateStaff = useMutation({
     mutationFn: async ({ id, input }: { id: string; input: StaffInput }) => {
-      const { error } = await supabase.from('users').update(input).eq('id', id)
+      const payload = { ...input, email: input.email?.trim().toLowerCase() || null }
+      const { error } = await supabase.from('users').update(payload).eq('id', id)
       if (error) {
-        if (error.code === '23505') throw new Error(`ID "${input.login_id}" đã tồn tại.`)
+        if (error.code === '23505') {
+          if (error.message.includes('email')) throw new Error(`Email "${input.email}" đã được dùng cho tài khoản khác.`)
+          throw new Error(`ID "${input.login_id}" đã tồn tại.`)
+        }
         if (error.code === '23514') throw new Error('ID chỉ được chứa chữ thường không dấu và số.')
         throw error
       }

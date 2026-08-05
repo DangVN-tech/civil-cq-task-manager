@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { clearSession, restoreSession } from '../lib/auth'
+import { supabase } from '../lib/supabase'
+import { clearSession, findUserByEmail } from '../lib/auth'
 import type { User } from '../types'
 
 interface AuthCtx {
@@ -16,9 +17,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    restoreSession()
-      .then(setUser)
-      .finally(() => setLoading(false))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user?.email) {
+        const u = await findUserByEmail(session.user.email)
+        setUser(u)
+      } else {
+        setUser(null)
+      }
+      setLoading(false)
+    })
+    return () => subscription.unsubscribe()
   }, [])
 
   const logout = () => {
