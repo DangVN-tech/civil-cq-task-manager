@@ -1,4 +1,4 @@
-# Civil&CQ Task Manager
+# Civil & QA/QC Task Manager
 
 Hệ thống quản lý công việc nội bộ cho phòng ~20 người. Truy cập từ bất kỳ đâu có Internet.
 **100% miễn phí**: Supabase Free Tier (database, realtime, lưu file) + Vercel Free (hosting web).

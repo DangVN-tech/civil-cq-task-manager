@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { CheckCircle2, ChevronDown, ChevronRight, EyeOff, Folder, FolderOpen, Pencil, Plus } from 'lucide-react'
 import { useCurrentUser } from '../../context/AuthContext'
 import { useActivityFeed } from '../../hooks/useUpdates'
+import { canViewTaskFull } from '../../lib/permissions'
 import { cn, fmtDateTime, timeLeftLabel } from '../../lib/utils'
 import type { Priority, Project, Task } from '../../types'
 import MarkDot from './MarkDot'
@@ -175,6 +176,8 @@ export default function TaskTree({
                           {grp.tasks.map((t) => {
                             const left = timeLeftLabel(t.deadline)
                             const completed = t.status === 'hoan_thanh'
+                            const full = canViewTaskFull(t, user)
+                            const chuTri = t.assignees.find((a) => a.assign_role === 'chu_tri')
                             return (
                               <div key={t.id} className="group/task flex items-center">
                                 <span className="h-px w-3 shrink-0 bg-slate-200" />
@@ -208,7 +211,11 @@ export default function TaskTree({
                                     <span className="shrink-0 text-[11px] font-semibold text-emerald-500">Hoàn thành</span>
                                   ) : (
                                     <>
-                                      <span className="shrink-0 text-[11px] font-semibold text-slate-500">{t.progress}%</span>
+                                      {full ? (
+                                        <span className="shrink-0 text-[11px] font-semibold text-slate-500">{t.progress}%</span>
+                                      ) : (
+                                        <span className="shrink-0 truncate text-[11px] text-slate-400">{chuTri?.user?.full_name ?? '—'}</span>
+                                      )}
                                       {t.deadline ? (
                                         <span
                                           className={cn('shrink-0 text-[11px]', left?.overdue ? 'font-semibold text-rose-600' : 'text-slate-400')}

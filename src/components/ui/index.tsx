@@ -143,7 +143,7 @@ export function ProgressBar({ value, className }: { value: number; className?: s
   )
 }
 
-/* ============ Progress slider (thanh trượt + nút nhanh) ============ */
+/* ============ Progress slider (5 mức cố định) ============ */
 export function ProgressSlider({
   value,
   onChange,
@@ -153,31 +153,26 @@ export function ProgressSlider({
   onChange: (v: number) => void
   disabled?: boolean
 }) {
-  const quick = [0, 25, 50, 75, 100]
+  const STEPS = [25, 50, 75, 90, 100]
   return (
-    <div className={cn('space-y-2.5', disabled && 'pointer-events-none opacity-60')}>
-      <input
-        type="range" min={0} max={100} step={5} value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-slate-100 accent-brand-500"
-      />
-      <div className="grid grid-cols-5 gap-1">
-        {quick.map((q) => (
-          <button
-            key={q}
-            type="button"
-            onClick={() => onChange(q)}
-            className={cn(
-              'rounded-lg border py-1 text-[10px] font-bold transition-all',
-              q === 100
-                ? 'border-emerald-100 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                : 'border-slate-100 bg-slate-50 text-slate-500 hover:bg-slate-100',
-            )}
-          >
-            {q}%
-          </button>
-        ))}
-      </div>
+    <div className={cn('flex gap-1.5', disabled && 'pointer-events-none opacity-60')}>
+      {STEPS.map((step) => (
+        <button
+          key={step}
+          type="button"
+          onClick={() => onChange(step)}
+          className={cn(
+            'flex-1 rounded-lg border py-1.5 text-[10px] font-bold transition-colors',
+            value >= step
+              ? step === 100
+                ? 'border-emerald-500 bg-emerald-500 text-white'
+                : 'border-indigo-600 bg-indigo-600 text-white'
+              : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-300 hover:text-indigo-600',
+          )}
+        >
+          {step}%
+        </button>
+      ))}
     </div>
   )
 }
