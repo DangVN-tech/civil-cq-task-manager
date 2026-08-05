@@ -490,6 +490,16 @@ create policy anon_storage_insert on storage.objects
 create policy anon_storage_delete on storage.objects
   for delete to anon using (bucket_id = 'task-files');
 
+-- Bucket riêng cho ảnh dán vào Nhật ký xử lý (public để <img src> load thẳng không cần ký URL)
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('task-images', 'task-images', true, 10485760)  -- 10 MB / ảnh
+on conflict (id) do nothing;
+
+create policy anon_storage_images_select on storage.objects
+  for select to anon using (bucket_id = 'task-images');
+create policy anon_storage_images_insert on storage.objects
+  for insert to anon with check (bucket_id = 'task-images');
+
 -- ============================================================
 -- 8. SEED: tài khoản Admin hệ thống
 --    ID: admin | đăng nhập bằng PIN của Trưởng phòng thật

@@ -63,6 +63,7 @@ export default function TaskDetail({ task }: { task: Task }) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const [pendingImages, setPendingImages] = useState<{ file: File; preview: string }[]>([])
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [commentError, setCommentError] = useState('')
   const imgInputRef = useRef<HTMLInputElement>(null)
 
   const [editOpen, setEditOpen] = useState(false)
@@ -130,6 +131,7 @@ export default function TaskDetail({ task }: { task: Task }) {
   const sendComment = async () => {
     const text = commentContent.trim()
     if (!text && pendingImages.length === 0) return
+    setCommentError('')
     setUploadingImage(true)
     try {
       const uploadedUrls = await Promise.all(pendingImages.map(({ file }) => uploadCommentImage(file, task.id)))
@@ -139,8 +141,9 @@ export default function TaskDetail({ task }: { task: Task }) {
       setCommentContent('')
       pendingImages.forEach(({ preview }) => URL.revokeObjectURL(preview))
       setPendingImages([])
-    } catch {
-      // silently fail — user can retry
+    } catch (e) {
+      // Giữ nguyên nội dung + ảnh đang soạn để user không mất nội dung khi upload lỗi
+      setCommentError(e instanceof Error ? e.message : 'Gửi thất bại, thử lại.')
     } finally {
       setUploadingImage(false)
     }
@@ -505,7 +508,7 @@ export default function TaskDetail({ task }: { task: Task }) {
                     <Textarea
                       rows={3}
                       value={commentContent}
-                      onChange={(e) => setCommentContent(e.target.value)}
+                      onChange={(e) => { setCommentContent(e.target.value); setCommentError('') }}
                       onPaste={handlePaste}
                       placeholder="Đã làm gì, đang chờ gì... (Ctrl+V để dán ảnh)"
                       className="bg-slate-50"
@@ -535,6 +538,9 @@ export default function TaskDetail({ task }: { task: Task }) {
                   </div>
                   {uploadingImage && (
                     <p className="mt-1.5 text-[11px] text-indigo-500">Đang tải ảnh lên...</p>
+                  )}
+                  {commentError && (
+                    <p className="mt-1.5 text-[11px] font-semibold text-rose-500">{commentError}</p>
                   )}
                   {pendingImages.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-2">
