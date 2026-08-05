@@ -40,10 +40,11 @@ create type project_status as enum ('dang_thuc_hien', 'hoan_thanh', 'luu_tru');
 create table users (
   id          uuid primary key default gen_random_uuid(),
   login_id    text not null unique check (login_id ~ '^[a-z0-9]+$'),
+  email       text unique,        -- đăng nhập bằng OTP email (Supabase Auth); login_id/PIN chỉ còn giữ để tương thích ngược
   full_name   text not null,
   role        user_role not null default 'nhan_vien',
   is_admin    boolean not null default false,  -- Admin hệ thống: chỉ xem task + quản trị
-  pin_hash    text,               -- chỉ dùng cho trưởng phòng (SHA-256 hex)
+  pin_hash    text,               -- legacy, không còn dùng trong luồng đăng nhập hiện tại
   pin_changed boolean not null default false,
   created_at  timestamptz not null default now()
 );
