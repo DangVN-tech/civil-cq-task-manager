@@ -2,6 +2,23 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { USER_COLS, type ActivityRow, type Comment } from '../types'
 
+export function useDeleteComment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ activityId }: { activityId: number; taskId: string }) => {
+      const { error } = await supabase
+        .from('activity_log')
+        .update({ detail: '[deleted]' })
+        .eq('id', activityId)
+      if (error) throw error
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['activity', v.taskId] })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+    },
+  })
+}
+
 export function useComments(taskId: string | null) {
   return useQuery({
     queryKey: ['comments', taskId],
@@ -27,7 +44,11 @@ export function useAddComment() {
         .insert({ task_id: taskId, user_id: userId, content })
       if (error) throw error
     },
-    onSuccess: (_d, v) => qc.invalidateQueries({ queryKey: ['comments', v.taskId] }),
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ['comments', v.taskId] })
+      qc.invalidateQueries({ queryKey: ['activity', v.taskId] })
+      qc.invalidateQueries({ queryKey: ['feed'] })
+    },
   })
 }
 

@@ -82,6 +82,16 @@ export async function downloadAllFiles(files: FileRow[], zipName: string): Promi
   URL.revokeObjectURL(url)
 }
 
+/** Upload 1 ảnh vào comment, trả về public URL. Dùng bucket task-images (public). */
+export async function uploadCommentImage(file: File, taskId: string): Promise<string> {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+  const path = `${taskId}/img-${crypto.randomUUID()}.${ext}`
+  const { error } = await supabase.storage.from('task-images').upload(path, file, { contentType: file.type })
+  if (error) throw new Error(`Upload ảnh thất bại: ${error.message}`)
+  const { data } = supabase.storage.from('task-images').getPublicUrl(path)
+  return data.publicUrl
+}
+
 /** Xóa 1 file (Storage + metadata). */
 export async function deleteFile(file: Pick<FileRow, 'id' | 'storage_path'>): Promise<void> {
   const { error: eS } = await supabase.storage.from('task-files').remove([file.storage_path])
