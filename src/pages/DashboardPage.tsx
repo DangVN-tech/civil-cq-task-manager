@@ -11,7 +11,7 @@ import { useUsers } from '../hooks/useUsers'
 import { useStorageUsage } from '../hooks/useStorage'
 import { useCurrentUser } from '../context/AuthContext'
 import { exportActionListExcel, exportPersonnelExcel } from '../lib/exportExcel'
-import { canManageStorage, canViewTaskFull } from '../lib/permissions'
+import { canExportReports, canManageStorage, canViewTaskFull } from '../lib/permissions'
 import { cn, fmtBytes, fmtDate, isOverdue } from '../lib/utils'
 import { displayRole, STORAGE_QUOTA, type Task } from '../types'
 
@@ -133,13 +133,15 @@ export default function DashboardPage() {
           >
             <RefreshCw size={14} /> Làm mới
           </button>
-          <button
-            onClick={exportExcel}
-            disabled={exporting}
-            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:opacity-50"
-          >
-            <FileSpreadsheet size={14} /> {exporting ? 'Đang xuất...' : 'Xuất báo cáo Excel'}
-          </button>
+          {canExportReports(user) && (
+            <button
+              onClick={exportExcel}
+              disabled={exporting}
+              className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-indigo-600/20 transition hover:bg-indigo-700 disabled:opacity-50"
+            >
+              <FileSpreadsheet size={14} /> {exporting ? 'Đang xuất...' : 'Xuất báo cáo Excel'}
+            </button>
+          )}
         </div>
       </div>
       {exportError && <p className="text-xs font-semibold text-rose-600">{exportError}</p>}
@@ -342,14 +344,16 @@ export default function DashboardPage() {
               <span className="rounded-lg border border-emerald-300 bg-emerald-200 px-2.5 py-1 text-[10px] font-extrabold text-emerald-800">
                 Phân tải trách nhiệm
               </span>
-              <button
-                onClick={exportPersonnel}
-                disabled={exportingPersonnel}
-                className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-200/60 disabled:opacity-50"
-              >
-                <FileSpreadsheet size={12} />
-                {exportingPersonnel ? 'Đang xuất...' : 'Xuất Excel'}
-              </button>
+              {canExportReports(user) && (
+                <button
+                  onClick={exportPersonnel}
+                  disabled={exportingPersonnel}
+                  className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-bold text-emerald-700 transition hover:bg-emerald-200/60 disabled:opacity-50"
+                >
+                  <FileSpreadsheet size={12} />
+                  {exportingPersonnel ? 'Đang xuất...' : 'Xuất Excel'}
+                </button>
+              )}
             </div>
           </div>
           <div className="space-y-3 p-4">
@@ -398,17 +402,22 @@ export default function DashboardPage() {
                       )}
                     </div>
                   </button>
-                  {expanded && (
-                    <div className="p-4">
-                      {r.tasks.length === 0 ? (
-                        <p className="py-2 text-center text-xs italic text-slate-400">Không có công việc nào.</p>
-                      ) : (
-                        <div className="ml-2.5 space-y-3 border-l-2 border-dashed border-emerald-400 py-1 pl-4">
-                          {r.tasks.map((t) => <PersonnelTaskRow key={t.id} task={t} />)}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  {expanded && (() => {
+                    const visibleTasks = r.tasks.filter((t) => canViewTaskFull(t, user))
+                    return (
+                      <div className="p-4">
+                        {visibleTasks.length === 0 ? (
+                          <p className="py-2 text-center text-xs italic text-slate-400">
+                            {r.tasks.length === 0 ? 'Không có công việc nào.' : 'Không có quyền xem chi tiết các task này.'}
+                          </p>
+                        ) : (
+                          <div className="ml-2.5 space-y-3 border-l-2 border-dashed border-emerald-400 py-1 pl-4">
+                            {visibleTasks.map((t) => <PersonnelTaskRow key={t.id} task={t} />)}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
                 </div>
               )
             })}
@@ -477,7 +486,7 @@ function ModernTaskRow({ task }: { task: Task }) {
         <div className="min-w-0 flex-1">
           {/* Dòng 1: title — full width, wrap tự nhiên */}
           <h4 className="mb-1.5 break-words text-xs font-bold leading-snug text-slate-800 transition-colors group-hover:text-indigo-600">
-            {task.title}
+            {full ? task.title : ''}
           </h4>
           {/* Dòng 2: priority · tiến độ · deadline · assignee · status */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">

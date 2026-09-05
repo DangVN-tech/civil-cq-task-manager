@@ -204,7 +204,7 @@ export default function TaskTree({
                                   )}
                                   <MarkDot task={t} />
                                   <span className={cn('min-w-0 flex-1 truncate', completed && 'line-through decoration-slate-300')}>
-                                    {t.title}
+                                    {full ? t.title : ''}
                                   </span>
                                   {!completed && <UnreadBadge count={unreadByTask.get(t.id) ?? 0} />}
                                   {completed ? (

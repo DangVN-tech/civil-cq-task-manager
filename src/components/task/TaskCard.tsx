@@ -49,7 +49,7 @@ export default function TaskCard({
 
       <span className="flex items-center gap-2">
         <MarkDot task={task} />
-        <span className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900">{task.title}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900">{full ? task.title : ''}</span>
         <UnreadBadge count={unreadCount} />
         <PriorityBadge priority={task.priority} />
       </span>

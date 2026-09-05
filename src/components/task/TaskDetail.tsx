@@ -189,7 +189,7 @@ export default function TaskDetail({ task }: { task: Task }) {
           </div>
           <div className="flex items-center gap-2.5">
             <MarkDot task={task} />
-            <h2 className="min-w-0 truncate text-lg font-extrabold tracking-tight text-slate-900">{task.title}</h2>
+            <h2 className="min-w-0 truncate text-lg font-extrabold tracking-tight text-slate-900">{full ? task.title : ''}</h2>
             <PriorityBadge priority={task.priority} />
           </div>
         </div>

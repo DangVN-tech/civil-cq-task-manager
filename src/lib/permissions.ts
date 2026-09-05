@@ -78,3 +78,8 @@ export function canComment(task: Task, u: User): boolean {
 export function canViewTaskFull(task: Task, u: User): boolean {
   return isTruongPhong(u) || isAdmin(u) || isParticipant(task, u)
 }
+
+/** Xuất báo cáo Excel toàn phòng: Trưởng phòng, Phó phòng, Admin (những người vốn cần nhìn tổng quan). */
+export function canExportReports(u: User): boolean {
+  return isTruongPhong(u) || isAdmin(u) || u.role === 'pho_phong'
+}
